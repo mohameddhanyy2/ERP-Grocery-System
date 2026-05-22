@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<application xmlns="https://jakarta.ee/xml/ns/jakartaee" version="10">
+    <display-name>GroceryERP</display-name>
+    <module><ejb>grocery-erp.jar</ejb></module>
+</application>

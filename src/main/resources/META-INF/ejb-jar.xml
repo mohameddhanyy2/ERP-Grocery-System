@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ejb-jar xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         version="4.0">
+
+    <description>Grocery Store ERP System — EJB Deployment Descriptor</description>
+    <display-name>GroceryERP</display-name>
+
+    <enterprise-beans>
+
+        <!-- ── POS MODULE ── -->
+        <session>
+            <display-name>POSModule</display-name>
+            <ejb-name>POSModule</ejb-name>
+            <local>com.groceryerp.interfaces.ISalesData</local>
+            <local>com.groceryerp.interfaces.IReceiptService</local>
+            <ejb-class>com.groceryerp.pos.POSModule</ejb-class>
+            <session-type>Stateless</session-type>
+            <transaction-type>Container</transaction-type>
+        </session>
+
+        <!-- ── CENTRAL INVENTORY BEAN (composite) ── -->
+        <session>
+            <display-name>CentralInventoryBean</display-name>
+            <ejb-name>CentralInventoryBean</ejb-name>
+            <local>com.groceryerp.interfaces.ITotalStock</local>
+            <local>com.groceryerp.interfaces.IStockAlerts</local>
+            <ejb-class>com.groceryerp.inventory.CentralInventoryBean</ejb-class>
+            <session-type>Stateful</session-type>
+            <transaction-type>Container</transaction-type>
+        </session>
+
+        <!-- ── SUPPLIER MODULE ── -->
+        <session>
+            <display-name>SupplierModule</display-name>
+            <ejb-name>SupplierModule</ejb-name>
+            <local>com.groceryerp.interfaces.ISupplierService</local>
+            <local>com.groceryerp.interfaces.IOrderStatus</local>
+            <ejb-class>com.groceryerp.supplier.SupplierModule</ejb-class>
+            <session-type>Stateless</session-type>
+            <transaction-type>Container</transaction-type>
+        </session>
+
+        <!-- ── HR MODULE ── -->
+        <session>
+            <display-name>HRModule</display-name>
+            <ejb-name>HRModule</ejb-name>
+            <local>com.groceryerp.interfaces.IStaffData</local>
+            <local>com.groceryerp.interfaces.IPayrollService</local>
+            <ejb-class>com.groceryerp.hr.HRModule</ejb-class>
+            <session-type>Stateful</session-type>
+            <transaction-type>Container</transaction-type>
+        </session>
+
+        <!-- ── FINANCE MODULE ── -->
+        <session>
+            <display-name>FinanceModule</display-name>
+            <ejb-name>FinanceModule</ejb-name>
+            <local>com.groceryerp.interfaces.IFinanceData</local>
+            <local>com.groceryerp.interfaces.IProfitReport</local>
+            <ejb-class>com.groceryerp.finance.FinanceModule</ejb-class>
+            <session-type>Stateless</session-type>
+            <transaction-type>Container</transaction-type>
+        </session>
+
+        <!-- ── CUSTOMER MODULE ── -->
+        <session>
+            <display-name>CustomerModule</display-name>
+            <ejb-name>CustomerModule</ejb-name>
+            <local>com.groceryerp.interfaces.ICustomerData</local>
+            <local>com.groceryerp.interfaces.ILoyaltyService</local>
+            <ejb-class>com.groceryerp.customer.CustomerModule</ejb-class>
+            <session-type>Stateless</session-type>
+            <transaction-type>Container</transaction-type>
+        </session>
+
+        <!-- ── REPORTING MODULE ── -->
+        <session>
+            <display-name>ReportingModule</display-name>
+            <ejb-name>ReportingModule</ejb-name>
+            <local>com.groceryerp.interfaces.IReportData</local>
+            <ejb-class>com.groceryerp.reporting.ReportingModule</ejb-class>
+            <session-type>Stateless</session-type>
+            <transaction-type>Container</transaction-type>
+        </session>
+
+    </enterprise-beans>
+
+</ejb-jar>
