@@ -1,41 +1,149 @@
 package com.groceryerp.hr;
 
+import com.groceryerp.hr.beans.EmployeeBean;
+import com.groceryerp.hr.beans.PayrollBean;
+import com.groceryerp.hr.beans.ShiftBean;
 import com.groceryerp.interfaces.*;
+import jakarta.ejb.Local;
+import jakarta.ejb.Stateful;
 import java.util.*;
 
 /**
- * HR Module — Component implementation.
+ * HR Module - Component implementation.
  *
  * PROVIDED interfaces: IStaffData, IPayrollService
  * REQUIRED interfaces: none (foundation module)
- *
- * EJB: annotate with @Stateful — payroll calculations span multiple steps.
  */
+/*
+ * HRModule is Stateful because payroll processing may span several steps
+ * during one user session. The session can temporarily hold generated payroll
+ * data while calculations are completed. This differs from Stateless modules
+ * such as SupplierModule, where each operation can be handled independently.
+ */
+@Stateful
+@Local({IStaffData.class, IPayrollService.class})
 public class HRModule implements IStaffData, IPayrollService {
 
-    public HRModule() {}
+    private List<EmployeeBean> employees;
+    private List<PayrollBean> payrolls;
+    private List<ShiftBean> shifts;
+
+    public HRModule() {
+        employees = new ArrayList<>();
+        payrolls = new ArrayList<>();
+        shifts = new ArrayList<>();
+
+        employees.add(new EmployeeBean("EMP001", "STORE001", "Ahmed Hassan", "Cashier", 45.0));
+        employees.add(new EmployeeBean("EMP002", "STORE001", "Mona Ali", "Store Clerk", 40.0));
+        employees.add(new EmployeeBean("EMP003", "STORE002", "Omar Samir", "Supervisor", 60.0));
+
+        shifts.add(new ShiftBean("SHIFT001", "EMP001", "2026-05-01 09:00", "2026-05-01 17:00", 8.0));
+        shifts.add(new ShiftBean("SHIFT002", "EMP001", "2026-05-02 09:00", "2026-05-02 17:00", 8.0));
+        shifts.add(new ShiftBean("SHIFT003", "EMP002", "2026-05-01 10:00", "2026-05-01 18:00", 8.0));
+        shifts.add(new ShiftBean("SHIFT004", "EMP003", "2026-05-01 08:00", "2026-05-01 16:00", 8.0));
+
+        payrolls.add(new PayrollBean("PAY001", "EMP001", "2026-05", 720.0, 72.0, 648.0));
+        payrolls.add(new PayrollBean("PAY002", "EMP002", "2026-05", 320.0, 32.0, 288.0));
+    }
 
     @Override
     public List<String> getStaffIdsByStore(String storeId) {
-        // TODO: Member 4 — return staff IDs for storeId
-        return new ArrayList<>();
+        List<String> staffIds = new ArrayList<>();
+
+        for (EmployeeBean employee : employees) {
+            if (employee.getStoreId().equals(storeId)) {
+                staffIds.add(employee.getEmployeeId());
+            }
+        }
+
+        return staffIds;
     }
 
     @Override
     public double getTotalPayrollCost(String period) {
-        // TODO: Member 4 — sum payroll for period
-        return 0.0;
+        double total = 0.0;
+
+        for (PayrollBean payroll : payrolls) {
+            if (payroll.getPeriod().equals(period)) {
+                total += payroll.getNetPay();
+            }
+        }
+
+        return total;
     }
 
     @Override
     public int getStaffCount(String storeId) {
-        // TODO: Member 4 — count staff at store
-        return 0;
+        int count = 0;
+
+        for (EmployeeBean employee : employees) {
+            if (employee.getStoreId().equals(storeId)) {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     @Override
     public double calculatePayroll(String employeeId, String period) {
-        // TODO: Member 4 — hoursWorked * hourlyRate
-        return 0.0;
+        PayrollBean existingPayroll = findPayroll(employeeId, period);
+
+        if (existingPayroll != null) {
+            return existingPayroll.getNetPay();
+        }
+
+        EmployeeBean employee = findEmployee(employeeId);
+
+        if (employee == null) {
+            return 0.0;
+        }
+
+        double hoursWorked = getHoursWorked(employeeId, period);
+        double grossPay = hoursWorked * employee.getHourlyRate();
+        double deductions = grossPay * 0.10;
+        double netPay = grossPay - deductions;
+
+        String payrollId = "PAY" + (payrolls.size() + 1);
+        PayrollBean payroll = new PayrollBean(payrollId, employeeId, period, grossPay, deductions, netPay);
+        payrolls.add(payroll);
+
+        return netPay;
+    }
+
+    private EmployeeBean findEmployee(String employeeId) {
+        for (EmployeeBean employee : employees) {
+            if (employee.getEmployeeId().equals(employeeId)) {
+                return employee;
+            }
+        }
+
+        return null;
+    }
+
+    private PayrollBean findPayroll(String employeeId, String period) {
+        for (PayrollBean payroll : payrolls) {
+            if (payroll.getEmployeeId().equals(employeeId) && payroll.getPeriod().equals(period)) {
+                return payroll;
+            }
+        }
+
+        return null;
+    }
+
+    private double getHoursWorked(String employeeId, String period) {
+        double totalHours = 0.0;
+
+        for (ShiftBean shift : shifts) {
+            if (shift.getEmployeeId().equals(employeeId) && isShiftInPeriod(shift, period)) {
+                totalHours += shift.getHoursWorked();
+            }
+        }
+
+        return totalHours;
+    }
+
+    private boolean isShiftInPeriod(ShiftBean shift, String period) {
+        return period != null && shift.getShiftStart() != null && shift.getShiftStart().startsWith(period);
     }
 }
