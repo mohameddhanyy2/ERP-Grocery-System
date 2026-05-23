@@ -90,9 +90,7 @@ export default function Inventory() {
             <button className="btn-secondary flex items-center gap-2" onClick={() => setShowAddProduct(true)}>
               <Plus size={14} /> Add Product
             </button>
-            <button className="btn-primary flex items-center gap-2" onClick={() => setShowRestock(true)}>
-              <Plus size={14} /> Restock
-            </button>
+            
           </div>
         }
       />
