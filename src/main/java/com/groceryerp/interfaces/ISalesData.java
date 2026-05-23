@@ -1,5 +1,4 @@
 package com.groceryerp.interfaces;
-import java.util.List;
 
 /** Provided by POSModule. Required by: FinanceModule, CustomerModule, ReportingModule. */
 public interface ISalesData {
@@ -8,3 +7,4 @@ public interface ISalesData {
 }
 
 // reviewed by: Omar Khalifa
+// conflicts resolved by: Omar Khalifa

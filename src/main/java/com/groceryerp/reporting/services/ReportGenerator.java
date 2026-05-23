@@ -48,4 +48,14 @@ public class ReportGenerator {
         report.setStoreId(storeId);
         return report;
     }
+
+    public ReportBean buildInventoryReport(String dateRange, String storeId) {
+        ReportBean report = new ReportBean();
+        report.setReportType("INVENTORY");
+        report.setDateRange(dateRange);
+        report.setTotalValue(dataCollector.fetchStockLevel("PROD_001")); // sample product
+        report.setGeneratedAt(java.time.LocalDateTime.now().toString());
+        report.setStoreId(storeId);
+        return report;
+    }
 }
