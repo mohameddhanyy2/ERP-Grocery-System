@@ -26,7 +26,6 @@ public class Main {
 
         // ── 1. Initialize database and seed reference data ─────────
         DatabaseManager.initializeDatabase();
-        DataSeeder.seed();
 
         System.out.println("\n=== Grocery ERP System — Startup ===\n");
 
