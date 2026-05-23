@@ -1,5 +1,4 @@
 package com.groceryerp.supplier.beans;
-
 import com.groceryerp.db.DatabaseManager;
 
 import java.io.Serializable;
@@ -100,3 +99,5 @@ public class SupplierBean implements Serializable {
         }
     }
 }
+
+// conflicts resolved by: Omar Khalifa

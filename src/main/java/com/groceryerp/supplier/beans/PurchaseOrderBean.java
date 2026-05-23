@@ -1,5 +1,4 @@
 package com.groceryerp.supplier.beans;
-
 import com.groceryerp.db.DatabaseManager;
 
 import java.io.Serializable;
@@ -75,6 +74,19 @@ public class PurchaseOrderBean implements Serializable {
             }
         }
 
+        public List<PurchaseOrderBean> findAll(){
+            List<PurchaseOrderBean> list = new ArrayList<>();
+            String sql = "SELECT orderId,supplierId,storeId,orderDate,totalCost,status FROM purchase_orders";
+            try (Connection conn = DatabaseManager.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) { list.add(mapRow(rs)); }
+            } catch (SQLException e) {
+                System.out.println("Failed to list purchase orders: " + e.getMessage());
+            }
+            return list;
+        }
+
         /** Finds a PurchaseOrderBean by ID, or returns null if not found. */
         public PurchaseOrderBean findById(String orderId) {
             String sql = "SELECT orderId,supplierId,storeId,orderDate,totalCost,status FROM purchase_orders WHERE orderId = ?";
@@ -143,6 +155,9 @@ public class PurchaseOrderBean implements Serializable {
             o.setTotalCost(rs.getDouble("totalCost"));
             o.setStatus(rs.getString("status"));
             return o;
-        }
+        } 
+
     }
 }
+
+// conflicts resolved by: Omar Khalifa

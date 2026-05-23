@@ -1,5 +1,4 @@
 package com.groceryerp.supplier.beans;
-
 import com.groceryerp.db.DatabaseManager;
 
 import java.io.Serializable;
@@ -94,3 +93,5 @@ public class OrderLineBean implements Serializable {
         }
     }
 }
+
+// conflicts reolved by: Omar Khalifa
