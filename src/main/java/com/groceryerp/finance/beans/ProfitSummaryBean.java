@@ -7,15 +7,16 @@ package com.groceryerp.finance.beans;
  */
 import java.io.Serializable;
 
+/** JavaBean representing a profit summary for a period. */
 public class ProfitSummaryBean implements Serializable {
-
     private String storeId;
     private String period;
     private double grossRevenue;
     private double totalExpenses;
     private double netProfit;
 
-    public ProfitSummaryBean() { /* no-arg constructor required by JavaBeans spec */ }
+
+    public ProfitSummaryBean() {}
 
     public String getStoreId() { return storeId; }
     public void setStoreId(String storeId) { this.storeId = storeId; }
@@ -32,3 +33,5 @@ public class ProfitSummaryBean implements Serializable {
     public double getNetProfit() { return netProfit; }
     public void setNetProfit(double netProfit) { this.netProfit = netProfit; }
 }
+
+// conflicts resolved by: Omar Khalifa

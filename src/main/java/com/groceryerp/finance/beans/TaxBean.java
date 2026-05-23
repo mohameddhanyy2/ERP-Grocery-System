@@ -1,7 +1,6 @@
 package com.groceryerp.finance.beans;
 
 import com.groceryerp.db.DatabaseManager;
-
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -10,26 +9,20 @@ import java.sql.SQLException;
 
 // @Entity
 // @Table(name="tax_records")
-/**
+/*
  * TaxBean — Entity Bean mapped to the {@code tax_records} table.
  * One row per tax record per period. Bean type: @Entity.
  */
+/** JavaBean representing tax calculation details. */
 public class TaxBean implements Serializable {
-
-    // @Id
-    /** Unique tax record identifier. */
     private String taxId;
-    /** Period this tax record applies to, e.g. "2026-05". */
     private String period;
-    /** Tax rate applied (e.g. 0.14 for 14%). */
     private double taxRate;
-    /** Amount subject to tax. */
     private double taxableAmount;
-    /** Tax amount owed (taxableAmount * taxRate). */
     private double taxOwed;
 
-    /** No-argument constructor required by JavaBeans spec. */
-    public TaxBean() { /* no-arg constructor required by JavaBeans spec */ }
+    public TaxBean() {}
+
 
     public String getTaxId() { return taxId; }
     public void setTaxId(String taxId) { this.taxId = taxId; }
@@ -91,3 +84,5 @@ public class TaxBean implements Serializable {
         }
     }
 }
+
+// conflicts resolved by: Omar Khalifa

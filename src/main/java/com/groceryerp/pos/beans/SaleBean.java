@@ -163,6 +163,21 @@ public class SaleBean implements Serializable {
             return 0.0;
         }
 
+        /** Returns the sum of totalAmount for all sales by a given customer. */
+        public double sumRevenueByCustomer(String customerId) {
+            String sql = "SELECT SUM(totalAmount) FROM sales WHERE customerId = ?";
+            try (Connection conn = DatabaseManager.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, customerId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) { return rs.getDouble(1); }
+                }
+            } catch (SQLException e) {
+                System.out.println("Failed to sum revenue by customer: " + e.getMessage());
+            }
+            return 0.0;
+        }
+
         /** Returns the count of transactions on a given date. */
         public int countByDate(String date) {
             String sql = "SELECT COUNT(*) FROM sales WHERE timestamp LIKE ?";

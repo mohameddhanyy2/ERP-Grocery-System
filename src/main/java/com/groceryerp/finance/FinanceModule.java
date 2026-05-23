@@ -13,6 +13,7 @@ import com.groceryerp.interfaces.IProfitReport;
 import com.groceryerp.interfaces.ISalesData;
 import com.groceryerp.interfaces.IStaffData;
 
+
 /**
  * FinanceModule — Stateless Session Bean for revenue, expense, and profit reporting.
  *
@@ -81,5 +82,19 @@ public class FinanceModule implements IFinanceData, IProfitReport {
                 + " | Revenue: " + revenue
                 + " | Expenses: " + expenses
                 + " | Net Profit: " + profit;
+    }   
+
+    /**
+     * Calculate overall profit (simple aggregate) using injected services.
+     */
+    public double calcProfit() {
+        if (salesData == null || staffData == null || orderStatus == null) return 0.0;
+        double revenue = getTotalRevenue("ALL");
+        double payroll = staffData.getTotalPayrollCost("ALL");
+        double purchaseCosts = orderStatus.getTotalPurchaseCost("ALL");
+        return revenue - payroll - purchaseCosts;
     }
+
 }
+
+// conflicts resolved by: Omar Khalifa

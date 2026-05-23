@@ -194,6 +194,12 @@ public class POSModule implements ISalesData, IReceiptService {
         return saleDao.countByDate(date);
     }
 
+    /** Returns the total amount spent by a customer across all their sales. */
+    @Override
+    public double getTotalSpendByCustomer(String customerId) {
+        return saleDao.sumRevenueByCustomer(customerId);
+    }
+
     // ── IReceiptService (provided) ────────────────────────────────
 
     /** Generates a formatted receipt string for a given sale ID, fetched from DB. */

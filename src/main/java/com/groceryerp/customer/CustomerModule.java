@@ -13,6 +13,7 @@ import com.groceryerp.interfaces.ISalesData;
 
 import java.util.List;
 
+
 /**
  * CustomerModule — Stateless Session Bean for customer data and loyalty management.
  *
@@ -34,6 +35,7 @@ public class CustomerModule implements ICustomerData, ILoyaltyService {
     private final LoyaltyBean.DAO loyaltyDao           = new LoyaltyBean.DAO();
     private final PurchaseHistoryBean.DAO historyDao   = new PurchaseHistoryBean.DAO();
 
+
     public CustomerModule() { /* no-arg constructor required by IoC */ }
 
     /** Injects the sales data dependency. */
@@ -45,7 +47,7 @@ public class CustomerModule implements ICustomerData, ILoyaltyService {
     @Override
     public String getCustomerName(String customerId) {
         CustomerBean customer = customerDao.findById(customerId);
-        if (customer == null) { return "Customer-" + customerId; }
+        if (customer == null) { return "Customer-" + customerId + " not found"; }
         return customer.getName();
     }
 
@@ -82,4 +84,12 @@ public class CustomerModule implements ICustomerData, ILoyaltyService {
         if (loyalty == null) { return "BRONZE"; }
         return loyalty.getTier();
     }
+
+    /** Returns the total amount spent by a customer across all their sales. */
+    @Override
+    public double getTotalSpend(String customerId) {
+        return salesData.getTotalSpendByCustomer(customerId);
+    }
 }
+
+// conflicts resolved by: Omar Khalifa

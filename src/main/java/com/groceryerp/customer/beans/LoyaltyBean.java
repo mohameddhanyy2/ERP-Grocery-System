@@ -10,22 +10,17 @@ import java.sql.SQLException;
 
 // @Entity
 // @Table(name="loyalty")
-/**
+/*
  * LoyaltyBean — Entity Bean mapped to the {@code loyalty} table.
  * One row per customer loyalty record. Bean type: @Entity.
  */
+/** JavaBean representing loyalty points for a customer. */
 public class LoyaltyBean implements Serializable {
-
-    // @Id
-    /** Customer ID this loyalty record belongs to. */
     private String customerId;
-    /** Accumulated loyalty points. */
     private int points;
-    /** Loyalty tier: BRONZE (0-499), SILVER (500-1499), GOLD (1500+). */
     private String tier;
 
-    /** No-argument constructor required by JavaBeans spec. */
-    public LoyaltyBean() { /* no-arg constructor required by JavaBeans spec */ }
+    public LoyaltyBean() {}
 
     public String getCustomerId() { return customerId; }
     public void setCustomerId(String customerId) { this.customerId = customerId; }
@@ -104,3 +99,5 @@ public class LoyaltyBean implements Serializable {
         }
     }
 }
+
+// conflicts resolved by: Omar Khalifa

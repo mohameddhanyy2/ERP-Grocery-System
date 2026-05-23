@@ -12,26 +12,18 @@ import java.util.List;
 
 // @Entity
 // @Table(name="purchase_history")
-/**
+/*
  * PurchaseHistoryBean — Entity Bean mapped to the {@code purchase_history} table.
  * One row per purchase history entry for a customer. Bean type: @Entity.
  */
 public class PurchaseHistoryBean implements Serializable {
-
-    // @Id
-    /** Unique history record identifier. */
     private String historyId;
-    /** ID of the customer. */
     private String customerId;
-    /** ID of the sale this history record references. */
     private String saleId;
-    /** ISO-8601 date of the purchase. */
     private String date;
-    /** Amount spent in this purchase. */
     private double amount;
 
-    /** No-argument constructor required by JavaBeans spec. */
-    public PurchaseHistoryBean() { /* no-arg constructor required by JavaBeans spec */ }
+    public PurchaseHistoryBean() {}
 
     public String getHistoryId() { return historyId; }
     public void setHistoryId(String historyId) { this.historyId = historyId; }
@@ -86,3 +78,5 @@ public class PurchaseHistoryBean implements Serializable {
         }
     }
 }
+
+// conflicts resolved by: Omar Khalifa

@@ -4,6 +4,7 @@ package com.groceryerp.interfaces;
 public interface ISalesData {
     double getTotalRevenueBySale(String storeId, String date);
     int getTransactionCount(String date);
+    double getTotalSpendByCustomer(String customerId);
 }
 
 // reviewed by: Omar Khalifa

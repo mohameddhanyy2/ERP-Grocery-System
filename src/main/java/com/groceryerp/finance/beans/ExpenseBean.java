@@ -1,5 +1,4 @@
 package com.groceryerp.finance.beans;
-
 import com.groceryerp.db.DatabaseManager;
 
 import java.io.Serializable;
@@ -7,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 
 // @Entity
 // @Table(name="expenses")
@@ -14,22 +14,15 @@ import java.sql.SQLException;
  * ExpenseBean — Entity Bean mapped to the {@code expenses} table.
  * One row per expense record. Bean type: @Entity.
  */
+/** JavaBean representing an Expense in the Finance module. */
 public class ExpenseBean implements Serializable {
-
-    // @Id
-    /** Unique expense identifier. */
     private String expenseId;
-    /** ID of the store that incurred the expense. */
     private String storeId;
-    /** Expense category, e.g. "Rent", "Utilities". */
     private String category;
-    /** Expense amount. */
     private double amount;
-    /** ISO-8601 date the expense was recorded. */
     private String date;
 
-    /** No-argument constructor required by JavaBeans spec. */
-    public ExpenseBean() { /* no-arg constructor required by JavaBeans spec */ }
+    public ExpenseBean() {}
 
     public String getExpenseId() { return expenseId; }
     public void setExpenseId(String expenseId) { this.expenseId = expenseId; }
@@ -83,3 +76,5 @@ public class ExpenseBean implements Serializable {
         }
     }
 }
+
+// conflicts resolved by: Omar Khalifa

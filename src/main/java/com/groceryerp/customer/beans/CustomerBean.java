@@ -10,27 +10,22 @@ import java.sql.SQLException;
 
 // @Entity
 // @Table(name="customers")
-/**
+/*
  * CustomerBean — Entity Bean mapped to the {@code customers} table.
  * One row per customer. Bean type: @Entity.
  */
+/** JavaBean representing a Customer in the Customer module. */
 public class CustomerBean implements Serializable {
-
-    // @Id
-    /** Unique customer identifier, e.g. "CUST_001". */
     private String customerId;
-    /** Full name of the customer. */
     private String name;
-    /** Customer email address. */
     private String email;
-    /** ID of the store the customer is registered at. */
     private String registeredStoreId;
 
-    /** No-argument constructor */
     public CustomerBean() {}
 
     public String getCustomerId() { return customerId; }
     public void setCustomerId(String customerId) { this.customerId = customerId; }
+
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

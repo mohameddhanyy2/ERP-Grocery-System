@@ -1,7 +1,6 @@
 package com.groceryerp.finance.beans;
 
 import com.groceryerp.db.DatabaseManager;
-
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -10,24 +9,18 @@ import java.sql.SQLException;
 
 // @Entity
 // @Table(name="revenue")
-/**
+/*
  * RevenueBean — Entity Bean mapped to the {@code revenue} table.
  * One row per revenue record per store per period. Bean type: @Entity.
  */
+/** JavaBean representing revenue for a period/store. */
 public class RevenueBean implements Serializable {
-
-    // @Id
-    /** Unique revenue record identifier. */
     private String revenueId;
-    /** Pay period this revenue belongs to, e.g. "2026-05". */
     private String period;
-    /** ID of the store that generated the revenue. */
-    private String storeId;
-    /** Gross revenue amount for this record. */
     private double grossRevenue;
+    private String storeId;
 
-    /** No-argument constructor required by JavaBeans spec. */
-    public RevenueBean() { /* no-arg constructor required by JavaBeans spec */ }
+    public RevenueBean() {}
 
     public String getRevenueId() { return revenueId; }
     public void setRevenueId(String revenueId) { this.revenueId = revenueId; }
@@ -77,3 +70,5 @@ public class RevenueBean implements Serializable {
         }
     }
 }
+
+// conflicts resolved by: Omar Khalifa
