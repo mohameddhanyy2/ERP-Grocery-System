@@ -1,0 +1,43 @@
+@startuml inventory-composite
+' Composite Structure diagram for the Inventory Module (Member 2)
+' CentralInventoryBean is the COMPOSITE; StoreInventoryBean parts are the LEAVES.
+
+title Inventory Module — Composite Structure
+
+component "CentralInventoryBean\n<<composite component>>" as Central {
+
+  component "store_a : StoreInventoryBean" as A
+  component "store_b : StoreInventoryBean" as B
+  component "store_c : StoreInventoryBean" as C
+
+  ' Each leaf PROVIDES the IStoreInventory contract (lollipop)
+  interface "IStoreInventory" as ISI_A
+  interface "IStoreInventory" as ISI_B
+  interface "IStoreInventory" as ISI_C
+  A -up- ISI_A
+  B -up- ISI_B
+  C -up- ISI_C
+}
+
+' The composite PROVIDES two chain-wide contracts (lollipops)
+interface "ITotalStock"  as ITS
+interface "IStockAlerts" as ISA
+Central -up- ITS
+Central -up- ISA
+
+' Internal assembly: the composite delegates to its leaves
+' through their provided IStoreInventory interfaces (ball-and-socket).
+Central ..> ISI_A : uses
+Central ..> ISI_B : uses
+Central ..> ISI_C : uses
+
+note right of Central
+  IoC: store parts are INJECTED via
+  addStore(IStoreInventory) — never
+  created inside the composite.
+
+  Provided: ITotalStock, IStockAlerts
+  Required: none (foundation component)
+end note
+
+@enduml

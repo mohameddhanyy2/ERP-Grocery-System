@@ -18,27 +18,40 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
-/**
- * StoreInventoryBean — Stateful Session Bean representing inventory for one store branch.
- *
- * Session state: storeId, storeName, lowStockThreshold — set at setup time via setters
- * and used across all subsequent checkStock() / updateStock() calls within this session.
- * Implements IStoreInventory — the shared contract used by POSModule and SupplierModule.
- *
- * Bean type: @Stateful — holds per-store configuration as conversational state.
- * The caller (Main.java) configures the bean once; all subsequent calls use that state.
+/*
+ * Leaf component of the inventory Composite Structure.
+ * <p>
+ * Represents the stock held by ONE physical store branch. It implements
+ * {@link IStoreInventory} — the shared contract delivered by Member 1 — so
+ * that callers (POS, Supplier, and the {@link CentralInventoryBean}
+ * composite) can treat one store and a whole chain through the same type.
+ * <p>
+ * The class is also a JavaBean: public class, public no-argument
+ * constructor, private fields, public getters/setters, and
+ * {@link Serializable}.
  */
 public class StoreInventoryBean implements IStoreInventory, Serializable {
 
-    // ── Session state fields ──────────────────────────────────────
+    /** Unique branch code, e.g. "STORE_A". */
     private String storeId;
+    /** Human-readable branch name, e.g. "Downtown Branch". */
     private String storeName;
-    private int lowStockThreshold;
 
     // Required dependency — injected via setter (IoC)
     private StockAlertMDB stockAlertMDB;
 
+    /** Maps each product code to the quantity currently on hand. */
+    private Map<String, Integer> stockMap;
+
+    /** Quantity at or below which a product counts as low stock. */
+    private int lowStockThreshold;
+
+    /**
+     * Public no-argument constructor required by the JavaBeans spec.
+     * Starts with an empty stock map and a default threshold of 10.
+     */
     public StoreInventoryBean() {
         this.lowStockThreshold = 10;
     }
@@ -48,7 +61,41 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
         this.stockAlertMDB = stockAlertMDB;
     }
 
-    // ── IStoreInventory implementation ────────────────────────────
+    // ── JavaBean accessors ──────────────────────────────────────────
+
+    /** @return the unique branch code. */
+    @Override
+    public String getStoreId() { return storeId; }
+    
+    /** @param storeId the unique branch code to set. */
+    public void setStoreId(String storeId) { this.storeId = storeId; }
+
+    /** @return the human-readable branch name. */
+    public String getStoreName() { return storeName; }
+
+    /** @param storeName the branch name to set. */
+    public void setStoreName(String storeName) { this.storeName = storeName; }
+
+    /** @return the low-stock threshold. */
+    public int getLowStockThreshold() { return lowStockThreshold; }
+
+    /** @param lowStockThreshold the low-stock threshold to set. */
+    public void setLowStockThreshold(int lowStockThreshold) { this.lowStockThreshold = lowStockThreshold; }
+
+    /** @return the product-to-quantity stock map. */
+    public Map<String, Integer> getStockMap() { return stockMap; }
+
+    /** @param stockMap the product-to-quantity stock map to set. */
+    public void setStockMap(Map<String, Integer> stockMap) { this.stockMap = stockMap; }
+
+    // ── IStoreInventory implementation ─────────────────────────────
+
+    /**
+     * Returns how many units of a product this branch holds.
+     *
+     * @param productId the product code to look up.
+     * @return the quantity on hand, or 0 if the product is unknown.
+     */
 
     @Override
     public int checkStock(String productId) {
@@ -66,6 +113,13 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
         return 0;
     }
 
+    /**
+     * Adjusts the quantity of a product. A positive value adds stock
+     * (a delivery), a negative value removes it (a sale).
+     *
+     * @param productId the product code to adjust.
+     * @param quantity  the signed change to apply to the current quantity.
+     */
     @Override
     public void updateStock(String productId, int delta) {
         String upsert = "INSERT INTO stock (storeId,productId,quantity) VALUES (?,?,?)"
@@ -96,6 +150,11 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
         }
     }
 
+    /**
+     * Lists every product whose quantity is below {@link #lowStockThreshold}.
+     *
+     * @return the product codes that currently need restocking.
+     */
     @Override
     public List<String> getLowStockAlerts() {
         StockAlertBean.DAO alertDao = new StockAlertBean.DAO();
@@ -107,8 +166,6 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
         return messages;
     }
 
-    @Override
-    public String getStoreId() { return storeId; }
 
     // ── @Remove — session end method ─────────────────────────────
 
@@ -119,11 +176,4 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
         storeName = null;
         stockAlertMDB = null;
     }
-
-    // ── JavaBean accessors ────────────────────────────────────────
-    public void setStoreId(String storeId) { this.storeId = storeId; }
-    public String getStoreName() { return storeName; }
-    public void setStoreName(String storeName) { this.storeName = storeName; }
-    public int getLowStockThreshold() { return lowStockThreshold; }
-    public void setLowStockThreshold(int lowStockThreshold) { this.lowStockThreshold = lowStockThreshold; }
 }

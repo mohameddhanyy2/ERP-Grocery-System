@@ -14,33 +14,49 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * CentralInventoryBean — Stateful Session Bean compositing all store branches.
- *
- * Session state: the List of IStoreInventory instances injected via addStore().
- * The registry accumulates through setup calls, then all query methods use it.
- * Implements ITotalStock and IStockAlerts — chain-wide inventory operations.
- *
- * Bean type: @Stateful — the store registry is built up across multiple addStore()
- * calls and must persist for the lifetime of this session.
+/*
+ * Composite component of the inventory module — aggregates every
+ * {@link StoreInventoryBean} branch into a single chain-wide view.
+ * <p>
+ * <b>PROVIDED interfaces:</b> {@link ITotalStock}, {@link IStockAlerts}<br>
+ * <b>REQUIRED interfaces:</b> none — this is a foundation component.
+ * <p>
+ * <b>Composite Structure:</b> the bean holds a {@code List<IStoreInventory>}
+ * and exposes operations over the whole collection. Because it works through
+ * the {@link IStoreInventory} interface, a caller cannot tell whether it is
+ * talking to one store or to the entire chain.
+ * <p>
+ * <b>Inversion of Control:</b> stores are <i>injected</i> from outside via
+ * {@link #addStore(IStoreInventory)} — the composite never creates a store
+ * with {@code new}.
  */
 public class CentralInventoryBean implements ITotalStock, IStockAlerts, Serializable {
 
-    // ── Session state — the store registry ───────────────────────
+    /** Child stores held by interface, not by concrete class (Composite). */
     private List<IStoreInventory> stores;
 
+    /** Public no-argument constructor required by the JavaBeans spec. */
     public CentralInventoryBean() {
         this.stores = new ArrayList<>();
     }
 
-    // ── IoC: stores injected, never created here ──────────────────
+    // ── IoC: stores injected, not created ──────────────────────────
 
-    /** Adds a store to the registry. Called during setup in Main.java. */
+    /**
+     * Injects one store branch into the composite (Inversion of Control).
+     *
+     * @param store the store to add, supplied from outside.
+     */
     public void addStore(IStoreInventory store) {
         stores.add(store);
     }
 
-    /** Looks up a store by ID from the registry. */
+    /**
+     * Finds an injected store by its id.
+     *
+     * @param storeId the branch code to look for.
+     * @return the matching store, or {@code null} if none matches.
+     */
     public IStoreInventory getStore(String storeId) {
         for (IStoreInventory store : stores) {
             if (store.getStoreId().equals(storeId)) { return store; }
@@ -48,8 +64,14 @@ public class CentralInventoryBean implements ITotalStock, IStockAlerts, Serializ
         return null;
     }
 
-    // ── ITotalStock implementation ────────────────────────────────
+    // ── ITotalStock implementation ──────────────────────────────────
 
+    /**
+     * Adds up the stock of one product across every branch.
+     *
+     * @param productId the product code to total.
+     * @return the chain-wide quantity on hand.
+     */
     @Override
     public int getTotalStock(String productId) {
         int total = 0;
@@ -59,6 +81,11 @@ public class CentralInventoryBean implements ITotalStock, IStockAlerts, Serializ
         return total;
     }
 
+    /**
+     * Lists every branch that currently has at least one low-stock product.
+     *
+     * @return the ids of stores reporting low stock.
+     */
     @Override
     public List<String> getStoresWithLowStock() {
         List<String> result = new ArrayList<>();
@@ -70,6 +97,15 @@ public class CentralInventoryBean implements ITotalStock, IStockAlerts, Serializ
         return result;
     }
 
+    /**
+     * Moves stock of a product from one branch to another. Does nothing
+     * if either branch id is unknown.
+     *
+     * @param fromStoreId the branch to take stock from.
+     * @param toStoreId   the branch to give stock to.
+     * @param productId   the product to move.
+     * @param qty         the number of units to move.
+     */
     @Override
     public void redistributeStock(String fromStoreId, String toStoreId, String productId, int qty) {
         IStoreInventory from = getStore(fromStoreId);
@@ -80,8 +116,15 @@ public class CentralInventoryBean implements ITotalStock, IStockAlerts, Serializ
         }
     }
 
-    // ── IStockAlerts implementation ───────────────────────────────
+    // ── IStockAlerts implementation ─────────────────────────────────
 
+    /**
+     * Tells whether a given product needs restocking in a given branch.
+     *
+     * @param productId the product to check.
+     * @param storeId   the branch to check.
+     * @return {@code true} if the product is low at that branch.
+     */
     @Override
     public boolean isRestockNeeded(String productId, String storeId) {
         IStoreInventory store = getStore(storeId);
@@ -92,6 +135,13 @@ public class CentralInventoryBean implements ITotalStock, IStockAlerts, Serializ
         return false;
     }
 
+    /**
+     * Lists every product that needs restocking in a given branch.
+     *
+     * @param storeId the branch to check.
+     * @return the low-stock product codes, or an empty list if the branch
+     *         is unknown.
+     */
     @Override
     public List<String> getProductsNeedingRestock(String storeId) {
         IStoreInventory store = getStore(storeId);
@@ -106,7 +156,14 @@ public class CentralInventoryBean implements ITotalStock, IStockAlerts, Serializ
         stores.clear();
     }
 
-    // ── JavaBean accessors ────────────────────────────────────────
+    // ── JavaBean accessors ──────────────────────────────────────────
+
+    /** @return the list of injected child stores. */
     public List<IStoreInventory> getStores() { return stores; }
+
+    /** @param stores the list of child stores to set. */
     public void setStores(List<IStoreInventory> stores) { this.stores = stores; }
+
 }
+
+// conflicts resolved by: Omar Khalifa
