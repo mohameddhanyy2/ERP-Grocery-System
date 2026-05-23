@@ -1,6 +1,9 @@
 package com.groceryerp.finance;
 
 import com.groceryerp.interfaces.*;
+import com.groceryerp.finance.beans.ProfitSummaryBean;
+
+import java.util.Objects;
 
 /**
  * Finance Module — Component implementation.
@@ -26,8 +29,13 @@ public class FinanceModule implements IFinanceData, IProfitReport {
 
     @Override
     public double getTotalRevenue(String period) {
-        // TODO: Member 5 — pull from ISalesData
-        return 0.0;
+        if (salesData == null) return 0.0;
+        try {
+            // delegate to salesData; many implementations expose store-level revenue, accept a special token
+            return salesData.getTotalRevenueBySale("ALL", period);
+        } catch (Exception ex) {
+            return 0.0;
+        }
     }
 
     @Override
@@ -44,7 +52,34 @@ public class FinanceModule implements IFinanceData, IProfitReport {
 
     @Override
     public String calcProfitSummary(String storeId, String period) {
-        // TODO: Member 5 — build ProfitSummaryBean
-        return "Profit summary for " + storeId + " / " + period;
+        ProfitSummaryBean summary = getFinancialSummary();
+        if (Objects.nonNull(summary)) {
+            return summary.toString();
+        }
+        return "No summary available for " + storeId + " / " + period;
+    }
+
+    /**
+     * Calculate overall profit (simple aggregate) using injected services.
+     */
+    public double calcProfit() {
+        if (salesData == null || staffData == null || orderStatus == null) return 0.0;
+        double revenue = getTotalRevenue("ALL");
+        double payroll = staffData.getTotalPayrollCost("ALL");
+        double purchaseCosts = orderStatus.getTotalPurchaseCost("ALL");
+        return revenue - payroll - purchaseCosts;
+    }
+
+    /**
+     * Build a ProfitSummaryBean for a generic period (delegates to injected services).
+     */
+    public ProfitSummaryBean getFinancialSummary() {
+        if (salesData == null || staffData == null || orderStatus == null) return null;
+        double revenue = getTotalRevenue("ALL");
+        double payroll = staffData.getTotalPayrollCost("ALL");
+        double purchaseCosts = orderStatus.getTotalPurchaseCost("ALL");
+        double totalExpenses = payroll + purchaseCosts;
+        double net = revenue - totalExpenses;
+        return new ProfitSummaryBean("ALL", revenue, totalExpenses, net);
     }
 }
