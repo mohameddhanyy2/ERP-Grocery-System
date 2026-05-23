@@ -62,6 +62,14 @@ public class ApiServer {
         ctx.addServlet(new ServletHolder(new ReportingServlet(reportingModule)), "/reporting/*");
         ctx.addServlet(new ServletHolder(new ProductServlet()), "/products/*");
         ctx.addServlet(new ServletHolder(new DashboardServlet(centralInventory, posModule, hrModule, financeModule, customerModule)), "/dashboard/*");
+        ctx.addServlet(new ServletHolder(new BaseServlet() {
+            @Override
+            protected void doPost(jakarta.servlet.http.HttpServletRequest req, jakarta.servlet.http.HttpServletResponse resp) throws java.io.IOException {
+                DatabaseManager.resetDatabase();
+                centralInventory.clearStores();
+                json(resp, Map.of("status", "ok", "message", "Database reset successfully"));
+            }
+        }), "/reset");
 
         server.setHandler(ctx);
     }

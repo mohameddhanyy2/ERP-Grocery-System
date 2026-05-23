@@ -76,4 +76,7 @@ export const api = {
 
   // Reporting
   report:        (type, period, storeId) => get(`/reporting/report?type=${type}&period=${period}&storeId=${storeId}`),
+
+  // Admin
+  resetDatabase: () => post('/reset', {}),
 };

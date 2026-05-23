@@ -17,9 +17,11 @@ const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'
 const fmt = (n) => new Intl.NumberFormat('en-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 0 }).format(n);
 
 export default function Dashboard() {
-  const [summary, setSummary] = useState(null);
-  const [charts, setCharts]   = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [summary, setSummary]       = useState(null);
+  const [charts, setCharts]         = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetMsg, setResetMsg]     = useState('');
 
   useEffect(() => {
     Promise.all([api.dashboard(), api.charts()])
@@ -28,12 +30,41 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleReset = async () => {
+    try {
+      await api.resetDatabase();
+      setResetMsg('Database cleared. Reload the page to start fresh.');
+      setConfirmReset(false);
+    } catch (err) {
+      setResetMsg('Reset failed: ' + err.message);
+    }
+  };
+
   if (loading) return <LoadingSpinner text="Loading dashboard..." />;
   if (!summary) return <p className="text-gray-500 text-center py-20">Could not load dashboard. Is the backend running?</p>;
 
   return (
     <div>
-      <PageHeader title="Dashboard" subtitle={`Period: ${summary.period}`} />
+      <PageHeader
+        title="Dashboard"
+        subtitle={`Period: ${summary.period}`}
+        action={
+          <div className="flex flex-col items-end gap-1">
+            {!confirmReset ? (
+              <button className="btn-secondary text-xs text-red-400 border-red-900 hover:border-red-600" onClick={() => setConfirmReset(true)}>
+                Reset Database
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-red-400">Delete all data?</span>
+                <button className="btn-secondary text-xs text-red-400 border-red-700" onClick={handleReset}>Yes, reset</button>
+                <button className="btn-secondary text-xs" onClick={() => setConfirmReset(false)}>Cancel</button>
+              </div>
+            )}
+            {resetMsg && <p className="text-xs text-amber-400">{resetMsg}</p>}
+          </div>
+        }
+      />
 
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

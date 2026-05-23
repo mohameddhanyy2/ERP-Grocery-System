@@ -280,6 +280,27 @@ public class DatabaseManager {
         return list;
     }
 
+    /** Deletes all rows from every table, leaving the schema intact. */
+    public static void resetDatabase() {
+        String[] tables = {
+            "sale_items", "sales", "receipts", "payments", "discounts",
+            "stock", "stock_alerts", "stores", "products",
+            "order_lines", "purchase_orders", "deliveries", "suppliers",
+            "attendance", "shifts", "payroll", "employees",
+            "expenses", "revenue", "tax_records",
+            "purchase_history", "loyalty", "customers"
+        };
+        try (Connection conn = getConnection();
+             Statement st = conn.createStatement()) {
+            for (String table : tables) {
+                st.executeUpdate("DELETE FROM " + table);
+            }
+            System.out.println("[DB] Database reset — all data cleared.");
+        } catch (SQLException e) {
+            System.out.println("[DB] Reset failed: " + e.getMessage());
+        }
+    }
+
     /** Persists a new store row. Returns false if storeId already exists. */
     public static boolean saveStore(String storeId, String storeName) {
         String sql = "INSERT INTO stores (storeId, storeName) VALUES (?, ?)";

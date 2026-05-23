@@ -182,17 +182,16 @@ export default function Supplier() {
                   {products.map(p => <option key={p.productId} value={p.productId}>{p.name} — EGP {p.price}</option>)}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Quantity</label>
-                  <input type="number" min="1" className="input" value={orderForm.quantity} onChange={e => setOrderForm({ ...orderForm, quantity: e.target.value })} required />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Store</label>
-                  <select className="input" value={orderForm.storeId} onChange={e => setOrderForm({ ...orderForm, storeId: e.target.value })}>
-                    {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Store</label>
+                <select className="input" value={orderForm.storeId} onChange={e => setOrderForm({ ...orderForm, storeId: e.target.value })} required>
+                  <option value="">Select store…</option>
+                  {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Quantity</label>
+                <input type="number" min="1" className="input" value={orderForm.quantity} onChange={e => setOrderForm({ ...orderForm, quantity: e.target.value })} required />
               </div>
               <div className="flex gap-2 pt-2">
                 <button type="submit" className="btn-primary flex-1">Place Order</button>
