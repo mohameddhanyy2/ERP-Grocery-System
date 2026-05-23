@@ -6,3 +6,5 @@ public interface ITotalStock {
     List<String> getStoresWithLowStock();
     void redistributeStock(String fromStoreId, String toStoreId, String productId, int qty);
 }
+
+// reviewed by: Omar Khalifa

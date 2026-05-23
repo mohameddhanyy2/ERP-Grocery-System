@@ -3,3 +3,5 @@ package com.groceryerp.interfaces;
 public interface IReceiptService {
     String generateReceipt(String saleId);
 }
+
+// reviewed by: Omar Khalifa

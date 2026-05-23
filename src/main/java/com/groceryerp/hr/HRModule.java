@@ -1,41 +1,133 @@
 package com.groceryerp.hr;
 
-import com.groceryerp.interfaces.*;
-import java.util.*;
+// @Stateful
+// Chosen because payroll calculation is a multi-step conversation: load employee,
+// load shifts, compute gross pay, apply deductions, finalize. Each step builds on
+// the previous one's result. The intermediate values (activeEmployee, activeShifts,
+// accumulatedHours, computedGrossPay) must persist across those steps.
+
+import com.groceryerp.hr.beans.EmployeeBean;
+import com.groceryerp.hr.beans.PayrollBean;
+import com.groceryerp.hr.beans.ShiftBean;
+import com.groceryerp.interfaces.IPayrollService;
+import com.groceryerp.interfaces.IStaffData;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * HR Module — Component implementation.
+ * HRModule — Stateful Session Bean for staff data and payroll calculation.
  *
- * PROVIDED interfaces: IStaffData, IPayrollService
- * REQUIRED interfaces: none (foundation module)
+ * Payroll is a multi-step session: beginPayrollSession() → loadShifts() →
+ * computeGrossPay() → finalizePayroll() → endSession(). Each step stores its
+ * result in session fields for the next step to consume.
  *
- * EJB: annotate with @Stateful — payroll calculations span multiple steps.
+ * Stateless reads (getStaffIdsByStore, getTotalPayrollCost, getStaffCount) do
+ * not touch session fields — they go straight to the DAO.
+ *
+ * Bean type: @Stateful — intermediate payroll values accumulate across method calls
+ * and must be held in instance state until endSession() clears them.
  */
 public class HRModule implements IStaffData, IPayrollService {
 
-    public HRModule() {}
+    // ── DAO fields (infrastructure, not business state) ───────────
+    private final EmployeeBean.DAO employeeDao = new EmployeeBean.DAO();
+    private final ShiftBean.DAO shiftDao       = new ShiftBean.DAO();
+    private final PayrollBean.DAO payrollDao   = new PayrollBean.DAO();
+
+    // ── Session state fields ──────────────────────────────────────
+    private String activeEmployeeId;
+    private EmployeeBean activeEmployee;
+    private List<ShiftBean> activeShifts;
+    private double accumulatedHours;
+    private double computedGrossPay;
+
+    public HRModule() { /* no-arg constructor required by JavaBeans spec */ }
+
+    // ── Stateful session lifecycle ────────────────────────────────
+
+    /** Step 1 — begin a payroll session for the given employee. */
+    public void beginPayrollSession(String employeeId) {
+        this.activeEmployeeId = employeeId;
+        this.activeEmployee   = employeeDao.findById(employeeId);
+        this.activeShifts     = new ArrayList<>();
+        this.accumulatedHours = 0.0;
+        this.computedGrossPay = 0.0;
+    }
+
+    /** Step 2 — load all shifts for the active employee in the given period. */
+    public void loadShifts(String period) {
+        this.activeShifts = shiftDao.findByEmployeeAndPeriod(activeEmployeeId, period);
+        this.accumulatedHours = 0.0;
+        for (ShiftBean shift : activeShifts) {
+            accumulatedHours += shift.getHoursWorked();
+        }
+    }
+
+    /** Step 3 — compute gross pay from accumulated hours and the employee's hourly rate. */
+    public void computeGrossPay() {
+        if (activeEmployee == null) {
+            computedGrossPay = 0.0;
+            return;
+        }
+        computedGrossPay = accumulatedHours * activeEmployee.getHourlyRate();
+    }
+
+    /**
+     * Step 4 — apply 15% deductions, persist the payroll record, and return it.
+     * Always call endSession() after this to clear session state.
+     */
+    public PayrollBean finalizePayroll(String period) {
+        double deductions = Math.round(computedGrossPay * 0.15 * 100.0) / 100.0;
+        double netPay     = Math.round((computedGrossPay - deductions) * 100.0) / 100.0;
+
+        PayrollBean payroll = new PayrollBean();
+        payroll.setPayrollId("PAY-" + activeEmployeeId + "-" + period);
+        payroll.setEmployeeId(activeEmployeeId);
+        payroll.setPeriod(period);
+        payroll.setGrossPay(Math.round(computedGrossPay * 100.0) / 100.0);
+        payroll.setDeductions(deductions);
+        payroll.setNetPay(netPay);
+        payrollDao.save(payroll);
+        return payroll;
+    }
+
+    // @Remove
+    /** Clears all session state. Must be called after finalizePayroll(). */
+    public void endSession() {
+        activeEmployeeId  = null;
+        activeEmployee    = null;
+        activeShifts      = null;
+        accumulatedHours  = 0.0;
+        computedGrossPay  = 0.0;
+    }
+
+    // ── IPayrollService (provided) ────────────────────────────────
+
+    @Override
+    public double calculatePayroll(String employeeId, String period) {
+        beginPayrollSession(employeeId);
+        loadShifts(period);
+        computeGrossPay();
+        PayrollBean result = finalizePayroll(period);
+        endSession();
+        return result.getNetPay();
+    }
+
+    // ── IStaffData (provided) — stateless reads ───────────────────
 
     @Override
     public List<String> getStaffIdsByStore(String storeId) {
-        // TODO: Member 4 — return staff IDs for storeId
-        return new ArrayList<>();
+        return employeeDao.findIdsByStore(storeId);
     }
 
     @Override
     public double getTotalPayrollCost(String period) {
-        // TODO: Member 4 — sum payroll for period
-        return 0.0;
+        return payrollDao.sumCostByPeriod(period);
     }
 
     @Override
     public int getStaffCount(String storeId) {
-        // TODO: Member 4 — count staff at store
-        return 0;
-    }
-
-    @Override
-    public double calculatePayroll(String employeeId, String period) {
-        // TODO: Member 4 — hoursWorked * hourlyRate
-        return 0.0;
+        return employeeDao.countByStore(storeId);
     }
 }

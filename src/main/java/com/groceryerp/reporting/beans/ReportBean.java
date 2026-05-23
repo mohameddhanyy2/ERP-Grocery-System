@@ -1,7 +1,11 @@
 package com.groceryerp.reporting.beans;
 import java.io.Serializable;
 
-/** JavaBean representing a generated report — the main DTO of the Reporting module. */
+// @Stateless (value object — computed on demand, not stored in a table, no DAO)
+/**
+ * ReportBean — computed result object for the Reporting module.
+ * Not persisted. Bean type: @Stateless value object.
+ */
 public class ReportBean implements Serializable {
     private String reportType;
     private String dateRange;
@@ -10,7 +14,7 @@ public class ReportBean implements Serializable {
     private String generatedAt;
     private String storeId;   // null = chain-wide report
 
-    public ReportBean() {}
+    public ReportBean() { /* no-arg constructor required by JavaBeans spec */ }
 
     public String getReportType() { return reportType; }
     public void setReportType(String reportType) { this.reportType = reportType; }

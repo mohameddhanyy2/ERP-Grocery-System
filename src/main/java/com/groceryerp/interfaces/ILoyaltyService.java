@@ -5,3 +5,5 @@ public interface ILoyaltyService {
     void addLoyaltyPoints(String customerId, double saleAmount);
     String getLoyaltyTier(String customerId);
 }
+
+// reviewed by: Omar Khalifa

@@ -7,3 +7,5 @@ public interface ISupplierService {
     String placeOrder(String supplierId, String productId, int quantity, String storeId);
     List<String> getAllSupplierIds();
 }
+
+// reviewed by: Omar Khalifa

@@ -3,3 +3,5 @@ package com.groceryerp.interfaces;
 public interface IProfitReport {
     String calcProfitSummary(String storeId, String period);
 }
+
+// reviewed by: Omar Khalifa

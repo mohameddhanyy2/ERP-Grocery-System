@@ -4,3 +4,5 @@ public interface IReportData {
     String generateReport(String reportType, String dateRange, String storeId);
     String exportCSV(String reportType, String dateRange);
 }
+
+// reviewed by: Omar Khalifa

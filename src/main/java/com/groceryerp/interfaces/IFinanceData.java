@@ -5,3 +5,5 @@ public interface IFinanceData {
     double getTotalExpenses(String period);
     double getNetProfit(String period);
 }
+
+// reviewed by: Omar Khalifa

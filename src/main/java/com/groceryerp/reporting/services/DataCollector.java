@@ -1,35 +1,64 @@
 package com.groceryerp.reporting.services;
 
-import com.groceryerp.interfaces.*;
+// @Stateless
+// Each fetch method receives a parameter and returns a value immediately.
+// No data is accumulated between calls. Holds only injected interface fields.
+
+import com.groceryerp.interfaces.ICustomerData;
+import com.groceryerp.interfaces.IFinanceData;
+import com.groceryerp.interfaces.ISalesData;
+import com.groceryerp.interfaces.IStaffData;
+import com.groceryerp.interfaces.ITotalStock;
 
 /**
- * DataCollector — internal sub-component of the Reporting module.
+ * DataCollector — Stateless helper for the Reporting module.
  *
- * Holds ALL five required interfaces, injected via IoC.
- * This is the clearest IoC demonstration in the project.
- * Never instantiates any module — only calls their interfaces.
+ * Holds all five required interfaces injected via IoC. Each fetch method
+ * delegates to one interface and returns immediately — no state accumulated.
+ *
+ * Bean type: @Stateless — pure delegation, no conversational state.
  */
 public class DataCollector {
 
-    // All five required interfaces — injected via setters (IoC)
+    // ── All five required interfaces — injected via setters (IoC) ──
     private ISalesData salesData;
     private IStaffData staffData;
     private ITotalStock totalStock;
     private IFinanceData financeData;
     private ICustomerData customerData;
 
-    public DataCollector() {}
+    public DataCollector() { /* no-arg constructor required by IoC */ }
 
-    public void setSalesData(ISalesData salesData)       { this.salesData = salesData; }
-    public void setStaffData(IStaffData staffData)       { this.staffData = staffData; }
-    public void setTotalStock(ITotalStock totalStock)    { this.totalStock = totalStock; }
-    public void setFinanceData(IFinanceData financeData) { this.financeData = financeData; }
+    /** Injects the sales data dependency. */
+    public void setSalesData(ISalesData salesData)          { this.salesData = salesData; }
+
+    /** Injects the staff data dependency. */
+    public void setStaffData(IStaffData staffData)          { this.staffData = staffData; }
+
+    /** Injects the total stock dependency. */
+    public void setTotalStock(ITotalStock totalStock)        { this.totalStock = totalStock; }
+
+    /** Injects the finance data dependency. */
+    public void setFinanceData(IFinanceData financeData)    { this.financeData = financeData; }
+
+    /** Injects the customer data dependency. */
     public void setCustomerData(ICustomerData customerData) { this.customerData = customerData; }
 
-    public double fetchRevenue(String period)       { return financeData.getTotalRevenue(period); }
-    public double fetchExpenses(String period)      { return financeData.getTotalExpenses(period); }
-    public double fetchNetProfit(String period)     { return financeData.getNetProfit(period); }
-    public double fetchPayroll(String period)       { return staffData.getTotalPayrollCost(period); }
-    public int fetchStockLevel(String productId)    { return totalStock.getTotalStock(productId); }
-    public int fetchTransactions(String date)       { return salesData.getTransactionCount(date); }
+    /** Fetches total revenue for the given period from IFinanceData. */
+    public double fetchRevenue(String period)    { return financeData.getTotalRevenue(period); }
+
+    /** Fetches total expenses for the given period from IFinanceData. */
+    public double fetchExpenses(String period)   { return financeData.getTotalExpenses(period); }
+
+    /** Fetches net profit for the given period from IFinanceData. */
+    public double fetchNetProfit(String period)  { return financeData.getNetProfit(period); }
+
+    /** Fetches total payroll cost for the given period from IStaffData. */
+    public double fetchPayroll(String period)    { return staffData.getTotalPayrollCost(period); }
+
+    /** Fetches total stock level for the given product ID from ITotalStock. */
+    public int fetchStockLevel(String productId) { return totalStock.getTotalStock(productId); }
+
+    /** Fetches transaction count for the given date from ISalesData. */
+    public int fetchTransactions(String date)    { return salesData.getTransactionCount(date); }
 }

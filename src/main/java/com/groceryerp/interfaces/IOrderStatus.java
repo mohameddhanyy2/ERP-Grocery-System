@@ -6,3 +6,5 @@ public interface IOrderStatus {
     double getTotalPurchaseCost(String period);
     List<String> getOrderIdsByStore(String storeId);
 }
+
+// reviewed by: Omar Khalifa

@@ -1,7 +1,11 @@
 package com.groceryerp.reporting.beans;
 import java.io.Serializable;
 
-/** JavaBean carrying a snapshot of inventory status across stores. */
+// @Stateless (value object — computed on demand, not stored in a table, no DAO)
+/**
+ * InventoryReportBean — computed result object for inventory snapshots.
+ * Not persisted. Bean type: @Stateless value object.
+ */
 public class InventoryReportBean implements Serializable {
     private int totalProducts;
     private int lowStockCount;
@@ -9,7 +13,7 @@ public class InventoryReportBean implements Serializable {
     private double stockValue;
     private String generatedAt;
 
-    public InventoryReportBean() {}
+    public InventoryReportBean() { /* no-arg constructor required by JavaBeans spec */ }
 
     public int getTotalProducts() { return totalProducts; }
     public void setTotalProducts(int totalProducts) { this.totalProducts = totalProducts; }

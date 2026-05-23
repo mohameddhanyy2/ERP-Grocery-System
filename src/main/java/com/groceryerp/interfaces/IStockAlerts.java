@@ -5,3 +5,5 @@ public interface IStockAlerts {
     boolean isRestockNeeded(String productId, String storeId);
     List<String> getProductsNeedingRestock(String storeId);
 }
+
+// reviewed by: Omar Khalifa

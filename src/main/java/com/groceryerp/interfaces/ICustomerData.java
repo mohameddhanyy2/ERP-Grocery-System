@@ -5,3 +5,5 @@ public interface ICustomerData {
     String getCustomerName(String customerId);
     List<String> getPurchaseHistoryIds(String customerId);
 }
+
+// reviewed by: Omar Khalifa

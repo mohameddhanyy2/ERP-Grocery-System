@@ -7,3 +7,5 @@ public interface IStoreInventory {
     List<String> getLowStockAlerts();
     String getStoreId();
 }
+
+// reviewed by: Omar Khalifa

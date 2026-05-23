@@ -6,3 +6,5 @@ public interface IStaffData {
     double getTotalPayrollCost(String period);
     int getStaffCount(String storeId);
 }
+
+// reviewed by: Omar Khalifa

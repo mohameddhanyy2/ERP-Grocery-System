@@ -1,7 +1,11 @@
 package com.groceryerp.reporting.beans;
 import java.io.Serializable;
 
-/** JavaBean carrying a sales summary for a given period. */
+// @Stateless (value object — computed on demand, not stored in a table, no DAO)
+/**
+ * SalesSummaryBean — computed result object for sales summaries.
+ * Not persisted. Bean type: @Stateless value object.
+ */
 public class SalesSummaryBean implements Serializable {
     private String period;
     private double grossRevenue;
@@ -9,7 +13,7 @@ public class SalesSummaryBean implements Serializable {
     private String topSellingProduct;
     private String storeId;
 
-    public SalesSummaryBean() {}
+    public SalesSummaryBean() { /* no-arg constructor required by JavaBeans spec */ }
 
     public String getPeriod() { return period; }
     public void setPeriod(String period) { this.period = period; }
