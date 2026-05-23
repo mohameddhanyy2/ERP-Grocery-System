@@ -3,6 +3,7 @@ package com.groceryerp.hr;
 import com.groceryerp.hr.beans.EmployeeBean;
 import com.groceryerp.hr.beans.PayrollBean;
 import com.groceryerp.hr.beans.ShiftBean;
+import com.groceryerp.hr.beans.AttendanceBean;
 import com.groceryerp.interfaces.*;
 import java.util.*;
 
@@ -12,8 +13,8 @@ import java.util.*;
  * PROVIDED interfaces: IStaffData, IPayrollService
  * REQUIRED interfaces: none (foundation module)
  *
- * AttendanceBean is included in the HR package as a future extension for
- * attendance tracking, but current payroll calculations use ShiftBean data.
+ * AttendanceBean is actively used to validate worked shifts for payroll
+ * calculation.
  */
 /*
  * HRModule simulates stateful behavior with internal lists for payroll
@@ -25,11 +26,13 @@ public class HRModule implements IStaffData, IPayrollService {
     private List<EmployeeBean> employees;
     private List<PayrollBean> payrolls;
     private List<ShiftBean> shifts;
+    private List<AttendanceBean> attendanceRecords;
 
     public HRModule() {
         employees = new ArrayList<>();
         payrolls = new ArrayList<>();
         shifts = new ArrayList<>();
+        attendanceRecords = new ArrayList<>();
 
         employees.add(new EmployeeBean("EMP001", "STORE001", "Ahmed Hassan", "Cashier", 45.0));
         employees.add(new EmployeeBean("EMP002", "STORE001", "Mona Ali", "Store Clerk", 40.0));
@@ -39,6 +42,11 @@ public class HRModule implements IStaffData, IPayrollService {
         shifts.add(new ShiftBean("SHIFT002", "EMP001", "2026-05-02 09:00", "2026-05-02 17:00", 8.0));
         shifts.add(new ShiftBean("SHIFT003", "EMP002", "2026-05-01 10:00", "2026-05-01 18:00", 8.0));
         shifts.add(new ShiftBean("SHIFT004", "EMP003", "2026-05-01 08:00", "2026-05-01 16:00", 8.0));
+
+        attendanceRecords.add(new AttendanceBean("2026-05-01", "EMP001", true));
+        attendanceRecords.add(new AttendanceBean("2026-05-02", "EMP001", false));
+        attendanceRecords.add(new AttendanceBean("2026-05-01", "EMP002", true));
+        attendanceRecords.add(new AttendanceBean("2026-05-01", "EMP003", true));
 
         payrolls.add(new PayrollBean("PAY001", "EMP001", "2026-05", 720.0, 72.0, 648.0));
         payrolls.add(new PayrollBean("PAY002", "EMP002", "2026-05", 320.0, 32.0, 288.0));
@@ -133,7 +141,9 @@ public class HRModule implements IStaffData, IPayrollService {
         double totalHours = 0.0;
 
         for (ShiftBean shift : shifts) {
-            if (Objects.equals(shift.getEmployeeId(), employeeId) && isShiftInPeriod(shift, period)) {
+            if (Objects.equals(shift.getEmployeeId(), employeeId)
+                    && isShiftInPeriod(shift, period)
+                    && isPresentForShift(employeeId, shift)) {
                 totalHours += shift.getHoursWorked();
             }
         }
@@ -144,5 +154,27 @@ public class HRModule implements IStaffData, IPayrollService {
     private boolean isShiftInPeriod(ShiftBean shift, String period) {
         // Simplified academic model: period is matched by String prefix, for example "2026-05".
         return period != null && shift.getShiftStart() != null && shift.getShiftStart().startsWith(period);
+    }
+
+    private boolean isPresentForShift(String employeeId, ShiftBean shift) {
+        String shiftDate = getShiftDate(shift);
+
+        for (AttendanceBean attendance : attendanceRecords) {
+            if (Objects.equals(attendance.getEmployeeId(), employeeId)
+                    && Objects.equals(attendance.getDate(), shiftDate)
+                    && attendance.isPresent()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private String getShiftDate(ShiftBean shift) {
+        if (shift.getShiftStart() == null || shift.getShiftStart().length() < 10) {
+            return null;
+        }
+
+        return shift.getShiftStart().substring(0, 10);
     }
 }
