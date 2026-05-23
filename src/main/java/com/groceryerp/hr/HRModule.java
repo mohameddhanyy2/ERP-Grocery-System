@@ -4,8 +4,6 @@ import com.groceryerp.hr.beans.EmployeeBean;
 import com.groceryerp.hr.beans.PayrollBean;
 import com.groceryerp.hr.beans.ShiftBean;
 import com.groceryerp.interfaces.*;
-import jakarta.ejb.Local;
-import jakarta.ejb.Stateful;
 import java.util.*;
 
 /**
@@ -18,13 +16,10 @@ import java.util.*;
  * attendance tracking, but current payroll calculations use ShiftBean data.
  */
 /*
- * HRModule is Stateful because it maintains session state for payroll
+ * HRModule simulates stateful behavior with internal lists for payroll
  * computation, shift aggregation, and cached payroll results per
- * employee-period. This differs from Stateless modules such as SupplierModule,
- * where each operation can be handled independently.
+ * employee-period. No EJB container is required.
  */
-@Stateful
-@Local({IStaffData.class, IPayrollService.class})
 public class HRModule implements IStaffData, IPayrollService {
 
     private List<EmployeeBean> employees;
