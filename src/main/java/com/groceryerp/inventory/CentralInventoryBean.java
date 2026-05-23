@@ -9,6 +9,7 @@ package com.groceryerp.inventory;
 import com.groceryerp.interfaces.IStockAlerts;
 import com.groceryerp.interfaces.IStoreInventory;
 import com.groceryerp.interfaces.ITotalStock;
+import com.groceryerp.inventory.beans.StockAlertBean;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -146,6 +147,15 @@ public class CentralInventoryBean implements ITotalStock, IStockAlerts, Serializ
     public List<String> getProductsNeedingRestock(String storeId) {
         IStoreInventory store = getStore(storeId);
         return store != null ? store.getLowStockAlerts() : new ArrayList<>();
+    }
+
+    @Override
+    public void resolveRestockAlert(String productId, String storeId) {
+        IStoreInventory store = getStore(storeId);
+        if (store != null) {
+            store.getLowStockAlerts().removeIf(alert -> alert.contains(productId));
+        }
+        new StockAlertBean.DAO().deleteByProductAndStore(productId, storeId);
     }
 
     // ── @Remove — session end method ─────────────────────────────

@@ -316,37 +316,60 @@ IReportData         ReportingModule        →     (end consumer)
 
 ## How to Run
 
-**Compile all files:**
+The system has two parts: a Java backend (REST API on port 8080) and a React frontend (dev server on port 5173). Run them in two separate terminals.
+
+### Prerequisites
+
+- Java 21+
+- Maven 3.8+
+- Node.js 18+ and npm
+
+---
+
+### 1. Backend (Java API server)
+
+From the project root:
+
 ```bash
-javac -d out $(find src -name "*.java")
+# Build the JAR (skips tests for speed)
+mvn package -DskipTests
+
+# Start the server (creates the SQLite database on first run)
+java -jar target/grocery-erp-1.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
-**Run the demo:**
+The server starts on **http://localhost:8080**.  
+The SQLite database file is created at `db/grocery_erp.db` automatically on first run.
+
+To reset all data, stop the server and delete `db/grocery_erp.db`, then restart.
+
+---
+
+### 2. Frontend (React dev server)
+
+In a second terminal, from the `frontend/` directory:
+
 ```bash
-java -cp out com.groceryerp.integration.Main
+cd frontend
+
+# Install dependencies (first time only)
+npm install
+
+# Start the dev server
+npm run dev
 ```
 
-**Expected output:**
-```
-=== Grocery ERP System — Startup ===
+The UI opens at **http://localhost:5173**.  
+All `/api/*` requests are proxied to the backend at `localhost:8080`.
 
-[IoC] HRModule instantiated (no required interfaces)
-[IoC] CentralInventoryBean assembled with 3 stores
-[IoC] POSModule wired with IStoreInventory
-[IoC] SupplierModule wired with IStoreInventory + IStockAlerts
-[IoC] FinanceModule wired with ISalesData + IStaffData + IOrderStatus
-[IoC] CustomerModule wired with ISalesData
-[IoC] ReportingModule wired with all 5 required interfaces
+---
 
-=== Demo Scenario ===
+### Quick-start order
 
-Total stock for PROD_001 across all stores: 100
-Stores with low stock: [STORE_A]
-Sale processed at STORE_A for PROD_001 x2
-Report generated: SALES | 0.0 | 2025-...
-
-=== ERP System Running ===
-```
+1. Start the backend first (it must be running before the frontend makes API calls)
+2. Start the frontend
+3. Open http://localhost:5173 in your browser
+4. Create at least one **Store**, then add **Products**, **Employees**, and **Suppliers** before using POS or Supplier workflows
 
 ---
 
@@ -407,6 +430,6 @@ Then open a **Pull Request** on GitHub → another member reviews → merge into
 
 ## Notes
 
-- Do not add Spring, Spring Boot, Hibernate, Maven, or any external dependency to this project. Plain Java only.
+- Do not add Spring, Spring Boot, or Hibernate. The project uses Maven only for building and packaging.
 - The `// TODO` comments in stub files mark exactly what each member needs to implement.
 - The `interfaces/` package must not be modified after Member 1 delivers it — all other members depend on these contracts. Any change must be discussed with the full team first.

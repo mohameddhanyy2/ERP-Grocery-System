@@ -1,5 +1,7 @@
 package com.groceryerp.finance;
 
+import java.time.LocalDate;
+
 // @Stateless
 // Chosen because each method computes and returns a result immediately using
 // injected interfaces and DAOs. No intermediate values are stored between calls.
@@ -46,6 +48,16 @@ public class FinanceModule implements IFinanceData, IProfitReport {
 
     /** Injects the order status dependency. */
     public void setOrderStatus(IOrderStatus orderStatus) { this.orderStatus = orderStatus; }
+
+    public void recordPurchaseCost(String storeId, String productId, int quantity, double totalCost) {
+        ExpenseBean expense = new ExpenseBean();
+        expense.setAmount(totalCost);
+        expense.setStoreId(storeId);
+        expense.setCategory("PURCHASE");
+        expense.setExpenseId("EXP-" + System.currentTimeMillis());
+        expense.setDate(LocalDate.now().toString());
+        expenseDao.save(expense);
+    }
 
     // ── IFinanceData (provided) ───────────────────────────────────
 

@@ -195,6 +195,31 @@ public class SaleBean implements Serializable {
             return 0;
         }
 
+        /** Returns all line items for a given sale ID. */
+        public List<SaleItemBean> findItemsBySaleId(String saleId) {
+            List<SaleItemBean> items = new ArrayList<>();
+            String sql = "SELECT * FROM sale_items WHERE saleId = ?";
+            try (Connection conn = DatabaseManager.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, saleId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        SaleItemBean item = new SaleItemBean();
+                        item.setItemId(rs.getString("itemId"));
+                        item.setSaleId(rs.getString("saleId"));
+                        item.setProductId(rs.getString("productId"));
+                        item.setQuantity(rs.getInt("quantity"));
+                        item.setUnitPrice(rs.getDouble("unitPrice"));
+                        item.setLineTotal(rs.getDouble("lineTotal"));
+                        items.add(item);
+                    }
+                }
+            } catch (SQLException e) {
+                System.out.println("Failed to find sale items: " + e.getMessage());
+            }
+            return items;
+        }
+
         private SaleBean mapRow(ResultSet rs) throws SQLException {
             SaleBean sale = new SaleBean();
             sale.setSaleId(rs.getString("saleId"));

@@ -76,23 +76,17 @@ public class LoyaltyBean implements Serializable {
          * Tier rules: 0-499 = BRONZE, 500-1499 = SILVER, 1500+ = GOLD.
          */
         public void addPoints(String customerId, int points) {
-            String selectSql = "SELECT points FROM loyalty WHERE customerId = ?";
+            String upsertSql = "INSERT INTO loyalty (customerId, points, tier) VALUES (?, ?, 'BRONZE') " +
+                               "ON CONFLICT(customerId) DO UPDATE SET " +
+                               "points = loyalty.points + excluded.points, " +
+                               "tier = CASE WHEN loyalty.points + excluded.points >= 1500 THEN 'GOLD' " +
+                               "           WHEN loyalty.points + excluded.points >= 500  THEN 'SILVER' " +
+                               "           ELSE 'BRONZE' END";
             try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement selectPs = conn.prepareStatement(selectSql)) {
-                selectPs.setString(1, customerId);
-                try (ResultSet rs = selectPs.executeQuery()) {
-                    if (rs.next()) {
-                        int newPoints = rs.getInt("points") + points;
-                        String tier = newPoints >= 1500 ? "GOLD" : newPoints >= 500 ? "SILVER" : "BRONZE";
-                        String updateSql = "UPDATE loyalty SET points = ?, tier = ? WHERE customerId = ?";
-                        try (PreparedStatement updatePs = conn.prepareStatement(updateSql)) {
-                            updatePs.setInt(1, newPoints);
-                            updatePs.setString(2, tier);
-                            updatePs.setString(3, customerId);
-                            updatePs.executeUpdate();
-                        }
-                    }
-                }
+                 PreparedStatement ps = conn.prepareStatement(upsertSql)) {
+                ps.setString(1, customerId);
+                ps.setInt(2, points);
+                ps.executeUpdate();
             } catch (SQLException e) {
                 System.out.println("Failed to add loyalty points: " + e.getMessage());
             }

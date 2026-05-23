@@ -2,8 +2,14 @@ package com.groceryerp.db;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Utility class for managing SQLite database connections and schema initialization.
@@ -76,6 +82,14 @@ public class DatabaseManager {
                 "  discountType TEXT NOT NULL," +
                 "  discountValue REAL NOT NULL," +
                 "  description TEXT" +
+                ")"
+            );
+
+            // ── Stores ────────────────────────────────────────────
+            stmt.execute(
+                "CREATE TABLE IF NOT EXISTS stores (" +
+                "  storeId TEXT PRIMARY KEY," +
+                "  storeName TEXT NOT NULL" +
                 ")"
             );
 
@@ -244,6 +258,39 @@ public class DatabaseManager {
             System.out.println("[DB] Database initialized successfully.");
         } catch (SQLException e) {
             System.out.println("[DB] Failed to initialize database: " + e.getMessage());
+        }
+    }
+
+    /** Loads all stores from the stores table. Returns list of {storeId, storeName} maps. */
+    public static List<Map<String, String>> loadStores() {
+        List<Map<String, String>> list = new ArrayList<>();
+        String sql = "SELECT storeId, storeName FROM stores ORDER BY storeId";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Map<String, String> m = new LinkedHashMap<>();
+                m.put("storeId", rs.getString("storeId"));
+                m.put("storeName", rs.getString("storeName"));
+                list.add(m);
+            }
+        } catch (SQLException e) {
+            System.out.println("[DB] Failed to load stores: " + e.getMessage());
+        }
+        return list;
+    }
+
+    /** Persists a new store row. Returns false if storeId already exists. */
+    public static boolean saveStore(String storeId, String storeName) {
+        String sql = "INSERT INTO stores (storeId, storeName) VALUES (?, ?)";
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, storeId);
+            ps.setString(2, storeName);
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            return false;
         }
     }
 }

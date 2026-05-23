@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-950 text-gray-100 font-sans;
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-gray-900; }
+  ::-webkit-scrollbar-thumb { @apply bg-gray-700 rounded-full; }
+}
+
+@layer components {
+  .card {
+    @apply bg-gray-900 border border-gray-800 rounded-xl p-6;
+  }
+  .btn-primary {
+    @apply bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm;
+  }
+  .btn-secondary {
+    @apply bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded-lg font-medium transition-colors text-sm;
+  }
+  .input {
+    @apply bg-gray-800 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 w-full placeholder-gray-500;
+  }
+  .table-row {
+    @apply border-b border-gray-800 hover:bg-gray-800/50 transition-colors;
+  }
+  .badge-green  { @apply bg-emerald-900/50 text-emerald-400 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-yellow { @apply bg-amber-900/50 text-amber-400 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-red    { @apply bg-red-900/50 text-red-400 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-blue   { @apply bg-blue-900/50 text-blue-400 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-purple { @apply bg-purple-900/50 text-purple-400 text-xs px-2 py-0.5 rounded-full font-medium; }
+}

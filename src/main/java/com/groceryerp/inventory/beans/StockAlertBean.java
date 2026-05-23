@@ -117,6 +117,19 @@ public class StockAlertBean implements Serializable {
             return list;
         }
 
+        /** Deletes all alerts for a given product and store (called when a restock alert is resolved). */
+        public void deleteByProductAndStore(String productId, String storeId) {
+            String sql = "DELETE FROM stock_alerts WHERE productId = ? AND storeId = ?";
+            try (Connection conn = DatabaseManager.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, productId);
+                ps.setString(2, storeId);
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                System.out.println("Failed to delete stock alert: " + e.getMessage());
+            }
+        }
+
         /**
          * Returns product IDs in the stock table where quantity is below the threshold for a given store.
          * Queries the stock table directly (not stock_alerts).

@@ -61,4 +61,34 @@ public class DataCollector {
 
     /** Fetches transaction count for the given date from ISalesData. */
     public int fetchTransactions(String date)    { return salesData.getTransactionCount(date); }
+
+    /** Returns the sum of all stock quantities across every product and store. */
+    public int fetchTotalStockAllProducts() {
+        String sql = "SELECT COALESCE(SUM(quantity), 0) FROM stock";
+        try (java.sql.Connection conn = com.groceryerp.db.DatabaseManager.getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(sql);
+             java.sql.ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) return rs.getInt(1);
+        } catch (java.sql.SQLException e) {
+            System.out.println("fetchTotalStockAllProducts failed: " + e.getMessage());
+        }
+        return 0;
+    }
+
+    /** Returns the number of distinct low-stock alert rows for a given store (or all stores if null/blank). */
+    public int fetchLowStockCount(String storeId) {
+        String sql = (storeId == null || storeId.isBlank())
+            ? "SELECT COUNT(*) FROM stock_alerts"
+            : "SELECT COUNT(*) FROM stock_alerts WHERE storeId = ?";
+        try (java.sql.Connection conn = com.groceryerp.db.DatabaseManager.getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (storeId != null && !storeId.isBlank()) ps.setString(1, storeId);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        } catch (java.sql.SQLException e) {
+            System.out.println("fetchLowStockCount failed: " + e.getMessage());
+        }
+        return 0;
+    }
 }
