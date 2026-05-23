@@ -1,22 +1,14 @@
 package com.groceryerp.hr;
 
-// @Stateful
-// Chosen because payroll calculation is a multi-step conversation: load employee,
-// load shifts, compute gross pay, apply deductions, finalize. Each step builds on
-// the previous one's result. The intermediate values (activeEmployee, activeShifts,
-// accumulatedHours, computedGrossPay) must persist across those steps.
-
 import com.groceryerp.hr.beans.EmployeeBean;
 import com.groceryerp.hr.beans.PayrollBean;
 import com.groceryerp.hr.beans.ShiftBean;
-import com.groceryerp.interfaces.IPayrollService;
-import com.groceryerp.interfaces.IStaffData;
-
-import java.util.ArrayList;
-import java.util.List;
+import com.groceryerp.hr.beans.AttendanceBean;
+import com.groceryerp.interfaces.*;
+import java.util.*;
 
 /**
- * HRModule — Stateful Session Bean for staff data and payroll calculation.
+ * HR Module - Component implementation.
  *
  * Payroll is a multi-step session: beginPayrollSession() → loadShifts() →
  * computeGrossPay() → finalizePayroll() → endSession(). Each step stores its
@@ -131,3 +123,5 @@ public class HRModule implements IStaffData, IPayrollService {
         return employeeDao.countByStore(storeId);
     }
 }
+
+// conflicts resolved by: Omar Khalifa

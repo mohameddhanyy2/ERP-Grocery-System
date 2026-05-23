@@ -1,5 +1,4 @@
 package com.groceryerp.hr.beans;
-
 import com.groceryerp.db.DatabaseManager;
 
 import java.io.Serializable;
@@ -10,46 +9,64 @@ import java.sql.SQLException;
 
 // @Entity
 // @Table(name="payroll")
-/**
+/*
  * PayrollBean — Entity Bean mapped to the {@code payroll} table.
  * One row per payroll record per employee per period. Bean type: @Entity.
  */
+/** JavaBean representing payroll in the HR module. */
 public class PayrollBean implements Serializable {
+    private static final long serialVersionUID = 1L;
 
-    // @Id
-    /** Unique payroll record identifier. */
     private String payrollId;
-    /** ID of the employee this payroll is for. */
     private String employeeId;
-    /** Pay period, e.g. "2026-05". */
     private String period;
-    /** Gross pay before deductions. */
     private double grossPay;
-    /** Total deductions amount. */
     private double deductions;
-    /** Net pay after deductions. */
     private double netPay;
 
-    /** No-argument constructor required by JavaBeans spec. */
-    public PayrollBean() { /* no-arg constructor required by JavaBeans spec */ }
+    public PayrollBean() {}
 
-    public String getPayrollId() { return payrollId; }
-    public void setPayrollId(String payrollId) { this.payrollId = payrollId; }
+    public String getPayrollId() {
+        return payrollId;
+    }
+    public void setPayrollId(String payrollId) {
+        this.payrollId = payrollId;
+    }
 
-    public String getEmployeeId() { return employeeId; }
-    public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
+    public String getEmployeeId() {
+        return employeeId;
+    }
+    public void setEmployeeId(String employeeId) {
+        this.employeeId = employeeId;
+    }
 
-    public String getPeriod() { return period; }
-    public void setPeriod(String period) { this.period = period; }
+    public String getPeriod() {
+        return period;
+    }
+    public void setPeriod(String period) {
+        this.period = period;
+    }
 
-    public double getGrossPay() { return grossPay; }
-    public void setGrossPay(double grossPay) { this.grossPay = grossPay; }
+    public double getGrossPay() {
+        return grossPay;
+    }
+    public void setGrossPay(double grossPay) {
+        this.grossPay = grossPay;
+    }
 
-    public double getDeductions() { return deductions; }
-    public void setDeductions(double deductions) { this.deductions = deductions; }
+    public double getDeductions() {
+        return deductions;
+    }
+    public void setDeductions(double deductions) {
+        this.deductions = deductions;
+    }
 
-    public double getNetPay() { return netPay; }
-    public void setNetPay(double netPay) { this.netPay = netPay; }
+    public double getNetPay() {
+        return netPay;
+    }
+    public void setNetPay(double netPay) {
+        this.netPay = netPay;
+    }
 
     // ── Nested DAO ─────────────────────────────────────────────────
 
@@ -114,3 +131,5 @@ public class PayrollBean implements Serializable {
         }
     }
 }
+
+// conflicts resolved by: Omar Khalifa

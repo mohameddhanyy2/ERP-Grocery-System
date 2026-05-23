@@ -1,5 +1,4 @@
 package com.groceryerp.hr.beans;
-
 import com.groceryerp.db.DatabaseManager;
 
 import java.io.Serializable;
@@ -12,46 +11,64 @@ import java.util.List;
 
 // @Entity
 // @Table(name="employees")
-/**
+/*
  * EmployeeBean — Entity Bean mapped to the {@code employees} table.
  * One row per employee. Bean type: @Entity.
  */
+/** JavaBean representing an employee in the HR module. */
 public class EmployeeBean implements Serializable {
+    private static final long serialVersionUID = 1L;
 
-    // @Id
-    /** Unique employee identifier, e.g. "EMP_A1". */
     private String employeeId;
-    /** ID of the store this employee is assigned to. */
     private String storeId;
-    /** Full name of the employee. */
     private String name;
-    /** Role: MANAGER, CASHIER, or STOCK_CLERK. */
     private String role;
-    /** Hourly pay rate. */
     private double hourlyRate;
-    /** ISO-8601 date the employee started. */
     private String startDate;
 
-    /** No-argument constructor required by JavaBeans spec. */
-    public EmployeeBean() { /* no-arg constructor required by JavaBeans spec */ }
+    public EmployeeBean() {}
 
-    public String getEmployeeId() { return employeeId; }
-    public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
+    public String getEmployeeId() {
+        return employeeId;
+    }
+    public void setEmployeeId(String employeeId) {
+        this.employeeId = employeeId;
+    }
 
-    public String getStoreId() { return storeId; }
-    public void setStoreId(String storeId) { this.storeId = storeId; }
+    public String getStoreId() {
+        return storeId;
+    }
+    public void setStoreId(String storeId) {
+        this.storeId = storeId;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getName() {
+        return name;
+    }
+    public void setName(String name) {
+        this.name = name;
+    }
 
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
+    public String getRole() {
+        return role;
+    }
+    public void setRole(String role) {
+        this.role = role;
+    }
 
-    public double getHourlyRate() { return hourlyRate; }
-    public void setHourlyRate(double hourlyRate) { this.hourlyRate = hourlyRate; }
+    public double getHourlyRate() {
+        return hourlyRate;
+    }
+    public void setHourlyRate(double hourlyRate) {
+        this.hourlyRate = hourlyRate;
+    }
 
-    public String getStartDate() { return startDate; }
-    public void setStartDate(String startDate) { this.startDate = startDate; }
+    public String getStartDate() {
+        return startDate;
+    }
+    public void setStartDate(String startDate) {
+        this.startDate = startDate;
+    }
 
     // ── Nested DAO ─────────────────────────────────────────────────
 
@@ -133,3 +150,6 @@ public class EmployeeBean implements Serializable {
         }
     }
 }
+
+
+// conflicts resolved by: Omar Khalifa
