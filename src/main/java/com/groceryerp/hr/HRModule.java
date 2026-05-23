@@ -13,12 +13,15 @@ import java.util.*;
  *
  * PROVIDED interfaces: IStaffData, IPayrollService
  * REQUIRED interfaces: none (foundation module)
+ *
+ * AttendanceBean is included in the HR package as a future extension for
+ * attendance tracking, but current payroll calculations use ShiftBean data.
  */
 /*
- * HRModule is Stateful because payroll processing may span several steps
- * during one user session. The session can temporarily hold generated payroll
- * data while calculations are completed. This differs from Stateless modules
- * such as SupplierModule, where each operation can be handled independently.
+ * HRModule is Stateful because it maintains session state for payroll
+ * computation, shift aggregation, and cached payroll results per
+ * employee-period. This differs from Stateless modules such as SupplierModule,
+ * where each operation can be handled independently.
  */
 @Stateful
 @Local({IStaffData.class, IPayrollService.class})
@@ -51,7 +54,7 @@ public class HRModule implements IStaffData, IPayrollService {
         List<String> staffIds = new ArrayList<>();
 
         for (EmployeeBean employee : employees) {
-            if (employee.getStoreId().equals(storeId)) {
+            if (Objects.equals(employee.getStoreId(), storeId)) {
                 staffIds.add(employee.getEmployeeId());
             }
         }
@@ -64,7 +67,7 @@ public class HRModule implements IStaffData, IPayrollService {
         double total = 0.0;
 
         for (PayrollBean payroll : payrolls) {
-            if (payroll.getPeriod().equals(period)) {
+            if (Objects.equals(payroll.getPeriod(), period)) {
                 total += payroll.getNetPay();
             }
         }
@@ -77,7 +80,7 @@ public class HRModule implements IStaffData, IPayrollService {
         int count = 0;
 
         for (EmployeeBean employee : employees) {
-            if (employee.getStoreId().equals(storeId)) {
+            if (Objects.equals(employee.getStoreId(), storeId)) {
                 count++;
             }
         }
@@ -113,7 +116,7 @@ public class HRModule implements IStaffData, IPayrollService {
 
     private EmployeeBean findEmployee(String employeeId) {
         for (EmployeeBean employee : employees) {
-            if (employee.getEmployeeId().equals(employeeId)) {
+            if (Objects.equals(employee.getEmployeeId(), employeeId)) {
                 return employee;
             }
         }
@@ -123,7 +126,7 @@ public class HRModule implements IStaffData, IPayrollService {
 
     private PayrollBean findPayroll(String employeeId, String period) {
         for (PayrollBean payroll : payrolls) {
-            if (payroll.getEmployeeId().equals(employeeId) && payroll.getPeriod().equals(period)) {
+            if (Objects.equals(payroll.getEmployeeId(), employeeId) && Objects.equals(payroll.getPeriod(), period)) {
                 return payroll;
             }
         }
@@ -135,7 +138,7 @@ public class HRModule implements IStaffData, IPayrollService {
         double totalHours = 0.0;
 
         for (ShiftBean shift : shifts) {
-            if (shift.getEmployeeId().equals(employeeId) && isShiftInPeriod(shift, period)) {
+            if (Objects.equals(shift.getEmployeeId(), employeeId) && isShiftInPeriod(shift, period)) {
                 totalHours += shift.getHoursWorked();
             }
         }
@@ -144,6 +147,7 @@ public class HRModule implements IStaffData, IPayrollService {
     }
 
     private boolean isShiftInPeriod(ShiftBean shift, String period) {
+        // Simplified academic model: period is matched by String prefix, for example "2026-05".
         return period != null && shift.getShiftStart() != null && shift.getShiftStart().startsWith(period);
     }
 }
