@@ -18,7 +18,6 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /*
  * Leaf component of the inventory Composite Structure.
@@ -41,9 +40,6 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
 
     // Required dependency — injected via setter (IoC)
     private StockAlertMDB stockAlertMDB;
-
-    /** Maps each product code to the quantity currently on hand. */
-    private Map<String, Integer> stockMap;
 
     /** Quantity at or below which a product counts as low stock. */
     private int lowStockThreshold;
@@ -81,12 +77,6 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
 
     /** @param lowStockThreshold the low-stock threshold to set. */
     public void setLowStockThreshold(int lowStockThreshold) { this.lowStockThreshold = lowStockThreshold; }
-
-    /** @return the product-to-quantity stock map. */
-    public Map<String, Integer> getStockMap() { return stockMap; }
-
-    /** @param stockMap the product-to-quantity stock map to set. */
-    public void setStockMap(Map<String, Integer> stockMap) { this.stockMap = stockMap; }
 
     // ── IStoreInventory implementation ─────────────────────────────
 

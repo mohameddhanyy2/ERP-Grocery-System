@@ -88,7 +88,7 @@ public class SupplierModule implements ISupplierService, IOrderStatus {
         orderLineDao.save(line);
 
         System.out.println("[SupplierModule] Order placed: " + order);
-        return line.getLineId();
+        return order.getOrderId();
     }
 
     /** Returns the IDs of all registered suppliers. */
