@@ -266,13 +266,6 @@ public class POSModule implements ISalesData, IReceiptService {
 
     // ── IReceiptService (provided) ────────────────────────────────
 
-    private static final java.util.Map<String, String> STORE_NAMES = new java.util.LinkedHashMap<>();
-    static {
-        STORE_NAMES.put("STORE_A", "Cairo Branch");
-        STORE_NAMES.put("STORE_B", "Giza Branch");
-        STORE_NAMES.put("STORE_C", "Alexandria Branch");
-    }
-
     /** Generates a formatted receipt string for a given sale ID, including all line items. */
     @Override
     public String generateReceipt(String saleId) {
@@ -280,7 +273,11 @@ public class POSModule implements ISalesData, IReceiptService {
         if (sale == null) return "RECEIPT NOT FOUND for sale: " + saleId;
 
         String customerName = customerData.getCustomerName(sale.getCustomerId());
-        String storeName    = STORE_NAMES.getOrDefault(sale.getStoreId(), sale.getStoreId());
+        String storeName    = com.groceryerp.db.DatabaseManager.loadStores().stream()
+                .filter(m -> sale.getStoreId().equals(m.get("storeId")))
+                .map(m -> m.get("storeName"))
+                .findFirst()
+                .orElse(sale.getStoreId());
         double subtotal     = sale.getTotalAmount();
         double taxAmount    = Math.round(subtotal * 0.14 * 100.0) / 100.0;
         double grandTotal   = Math.round((subtotal + taxAmount) * 100.0) / 100.0;
