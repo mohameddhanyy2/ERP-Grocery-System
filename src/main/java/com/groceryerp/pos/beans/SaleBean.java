@@ -145,13 +145,20 @@ public class SaleBean implements Serializable {
             return list;
         }
 
-        /** Returns the sum of totalAmount for a given store on a given date. */
+        /** Returns the sum of totalAmount for a given store on a given date. Pass empty storeId for all stores. */
         public double sumRevenueByStoreAndDate(String storeId, String date) {
-            String sql = "SELECT SUM(totalAmount) FROM sales WHERE storeId = ? AND timestamp LIKE ?";
+            boolean allStores = storeId == null || storeId.isEmpty();
+            String sql = allStores
+                ? "SELECT SUM(totalAmount) FROM sales WHERE timestamp LIKE ?"
+                : "SELECT SUM(totalAmount) FROM sales WHERE storeId = ? AND timestamp LIKE ?";
             try (Connection conn = DatabaseManager.getConnection();
                  PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, storeId);
-                ps.setString(2, date + "%");
+                if (allStores) {
+                    ps.setString(1, date + "%");
+                } else {
+                    ps.setString(1, storeId);
+                    ps.setString(2, date + "%");
+                }
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         return rs.getDouble(1);

@@ -6,7 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import { Plus, Trash2, Receipt, ShoppingCart } from 'lucide-react';
-const fmt = (n) => `EGP ${Number(n).toFixed(2)}`;
+import { fmt } from '../utils/fmt';
 
 export default function POS() {
   const stores = useStores();
@@ -183,7 +183,7 @@ export default function POS() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800 text-left">
-                {['Sale ID', 'Store', 'Customer', 'Items', 'Total', 'Payment', 'Time', ''].map(h => (
+                {['Sale ID', 'Store', 'Customer', 'Total', 'Payment', 'Time', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-xs text-gray-500 font-medium uppercase">{h}</th>
                 ))}
               </tr>
@@ -193,8 +193,7 @@ export default function POS() {
                 <tr key={i} className="table-row">
                   <td className="px-4 py-3 font-mono text-xs text-gray-400">{s.saleId?.slice(0, 20)}</td>
                   <td className="px-4 py-3 text-gray-300">{stores.find(st => st.id === s.storeId)?.name || s.storeId}</td>
-                  <td className="px-4 py-3 text-gray-400">{s.customerId === 'GUEST' ? 'Guest' : s.customerId}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{s.itemCount ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-400">{s.customerName}</td>
                   <td className="px-4 py-3 font-semibold text-emerald-400">{fmt(s.totalAmount)}</td>
                   <td className="px-4 py-3"><span className={paymentColor(s.paymentMethod)}>{s.paymentMethod}</span></td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{s.timestamp?.slice(0, 19)}</td>
@@ -354,7 +353,7 @@ export default function POS() {
                   <label className="text-xs text-gray-400 mb-1 block">Amount Paid (EGP)</label>
                   <input
                     type="number" min="0" step="0.01" className="input"
-                    placeholder={`≥ ${grandTotal.toFixed(2)}`}
+                    placeholder={`≥ ${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     value={amountPaid}
                     onChange={e => setAmountPaid(e.target.value)}
                     required

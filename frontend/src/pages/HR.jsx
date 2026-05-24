@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import { Plus } from 'lucide-react';
+import { fmt } from '../utils/fmt';
 
 const ROLES = ['Cashier', 'Manager', 'Supervisor', 'Stock Clerk', 'Security', 'Cleaner'];
 
@@ -74,7 +75,7 @@ export default function HR() {
     e.preventDefault();
     try {
       const r = await api.runPayroll(payForm);
-      setMsg(`Payroll complete — Net Pay: EGP ${Number(r.netPay).toFixed(2)}`);
+      setMsg(`Payroll complete — Net Pay: ${fmt(r.netPay)}`);
       setShowRunPayroll(false);
       setPayForm({ employeeId: '', period: new Date().toISOString().slice(0, 7) });
       load();
@@ -137,9 +138,9 @@ export default function HR() {
                           <p className="font-medium text-white">{e.name}</p>
                           <p className="text-xs text-gray-500">{e.employeeId}</p>
                         </td>
-                        <td className="px-4 py-3 text-gray-400">{stores.find(s => s.id === e.storeId)?.name || e.storeId}</td>
+                        <td className="px-4 py-3 text-gray-400">{e.storeName || e.storeId}</td>
                         <td className="px-4 py-3"><span className="badge-blue">{e.role}</span></td>
-                        <td className="px-4 py-3 text-emerald-400">EGP {e.hourlyRate}/hr</td>
+                        <td className="px-4 py-3 text-emerald-400">{fmt(e.hourlyRate)}/hr</td>
                         <td className="px-4 py-3 text-gray-500 text-xs">{e.startDate || '—'}</td>
                       </tr>
                     ))}
@@ -192,9 +193,9 @@ export default function HR() {
                       <tr key={i} className="table-row">
                         <td className="px-4 py-3 font-medium text-white">{p.employeeName || p.employeeId}</td>
                         <td className="px-4 py-3 text-gray-400">{p.period}</td>
-                        <td className="px-4 py-3 text-gray-300">EGP {Number(p.grossPay).toFixed(2)}</td>
-                        <td className="px-4 py-3 text-red-400">-EGP {Number(p.deductions).toFixed(2)}</td>
-                        <td className="px-4 py-3 font-semibold text-emerald-400">EGP {Number(p.netPay).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-gray-300">{fmt(p.grossPay)}</td>
+                        <td className="px-4 py-3 text-red-400">-{fmt(p.deductions)}</td>
+                        <td className="px-4 py-3 font-semibold text-emerald-400">{fmt(p.netPay)}</td>
                       </tr>
                     ))}
                   </tbody>

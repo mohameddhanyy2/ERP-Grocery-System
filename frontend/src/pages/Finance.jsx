@@ -8,7 +8,7 @@ import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import { DollarSign, TrendingUp, TrendingDown, Plus } from 'lucide-react';
 
-const fmt = (n) => `EGP ${Number(n).toFixed(2)}`;
+import { fmt } from '../utils/fmt';
 
 export default function Finance() {
   const stores = useStores();

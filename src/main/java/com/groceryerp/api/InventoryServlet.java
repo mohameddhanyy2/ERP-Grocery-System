@@ -115,15 +115,19 @@ public class InventoryServlet extends BaseServlet {
 
     private void handleAlerts(HttpServletResponse resp) throws IOException {
         List<Map<String, Object>> rows = new ArrayList<>();
-        String sql = "SELECT * FROM stock_alerts ORDER BY alertDate DESC LIMIT 100";
+        String sql = "SELECT sa.*, COALESCE(p.name, sa.productId) as productName, COALESCE(st.storeName, sa.storeId) as storeName " +
+                     "FROM stock_alerts sa " +
+                     "LEFT JOIN products p ON sa.productId=p.productId " +
+                     "LEFT JOIN stores st ON sa.storeId=st.storeId " +
+                     "ORDER BY sa.alertDate DESC LIMIT 100";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("alertId", rs.getString("alertId"));
-                row.put("productId", rs.getString("productId"));
-                row.put("storeId", rs.getString("storeId"));
+                row.put("productId", rs.getString("productName"));
+                row.put("storeId", rs.getString("storeName"));
                 row.put("currentQty", rs.getInt("currentQty"));
                 row.put("threshold", rs.getInt("threshold"));
                 row.put("alertDate", rs.getString("alertDate"));

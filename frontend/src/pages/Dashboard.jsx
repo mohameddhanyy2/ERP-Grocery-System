@@ -14,7 +14,7 @@ import {
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
-const fmt = (n) => new Intl.NumberFormat('en-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 0 }).format(n);
+import { fmt } from '../utils/fmt';
 
 export default function Dashboard() {
   const [summary, setSummary]       = useState(null);

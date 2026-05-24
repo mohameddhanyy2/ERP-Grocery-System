@@ -78,7 +78,7 @@ public class SupplierModule implements ISupplierService, IOrderStatus {
         order.setSupplierId(supplierId);
         order.setStoreId(storeId);
         order.setOrderDate(getCurrentDate());
-        order.setStatus("PENDING");
+        order.setStatus("ACCEPTED");
         order.setTotalCost(quantity * unitCost);
 
         orderDao.save(order);

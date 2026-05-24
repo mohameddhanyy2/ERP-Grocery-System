@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import { Plus, Star } from 'lucide-react';
+import { fmt } from '../utils/fmt';
 
 export default function Customers() {
   const stores = useStores();
@@ -129,7 +130,7 @@ export default function Customers() {
               {[
                 { label: 'Points', value: selected.points ?? 0 },
                 { label: 'Tier',   value: selected.tier || 'BRONZE' },
-                { label: 'Spent',  value: `EGP ${Number(selected.totalSpend || 0).toFixed(0)}` },
+                { label: 'Spent',  value: fmt(selected.totalSpend || 0) },
               ].map(s => (
                 <div key={s.label} className="bg-gray-800 rounded-lg p-3 text-center">
                   <p className="text-xs text-gray-500">{s.label}</p>
@@ -146,7 +147,7 @@ export default function Customers() {
                     <div key={i} className="flex justify-between items-center text-xs bg-gray-800 rounded-lg px-3 py-2">
                       <span className="text-gray-400">{h.date?.slice(0, 10)}</span>
                       <span className="text-gray-500 font-mono">{h.saleId?.slice(0, 20)}</span>
-                      <span className="text-emerald-400 font-semibold">EGP {Number(h.amount).toFixed(2)}</span>
+                      <span className="text-emerald-400 font-semibold">{fmt(h.amount)}</span>
                     </div>
                   ))}
                 </div>

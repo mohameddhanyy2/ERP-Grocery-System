@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import { Plus, RefreshCw } from 'lucide-react';
+import { fmt } from '../utils/fmt';
 
 export default function Inventory() {
   const stores = useStores();
@@ -136,7 +137,7 @@ export default function Inventory() {
                       </td>
                       <td className="px-4 py-3 text-gray-400">{r.category || '—'}</td>
                       <td className="px-4 py-3 text-gray-400">{stores.find(s => s.id === r.storeId)?.name || r.storeId}</td>
-                      <td className="px-4 py-3 text-gray-300">EGP {r.price?.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-gray-300">{fmt(r.price)}</td>
                       <td className="px-4 py-3 font-semibold text-white">{r.quantity}</td>
                       <td className="px-4 py-3">
                         {r.quantity === 0 ? <span className="badge-red">Out</span>
@@ -167,7 +168,7 @@ export default function Inventory() {
                 {alerts.map((a, i) => (
                   <tr key={i} className="table-row">
                     <td className="px-4 py-3 font-medium text-white">{a.productId}</td>
-                    <td className="px-4 py-3 text-gray-400">{stores.find(s => s.id === a.storeId)?.name || a.storeId}</td>
+                    <td className="px-4 py-3 text-gray-400">{a.storeId}</td>
                     <td className="px-4 py-3"><span className="badge-red">{a.currentQty}</span></td>
                     <td className="px-4 py-3 text-gray-400">{a.threshold}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{a.alertDate}</td>
@@ -193,7 +194,7 @@ export default function Inventory() {
               <label className="text-xs text-gray-400 mb-1 block">Product</label>
               <select className="input" value={form.productId} onChange={e => setForm({ ...form, productId: e.target.value })} required>
                 <option value="">Select product…</option>
-                {products.map(p => <option key={p.productId} value={p.productId}>{p.name} — EGP {p.price}</option>)}
+                {products.map(p => <option key={p.productId} value={p.productId}>{p.name} — {fmt(p.price)}</option>)}
               </select>
             </div>
             <div>

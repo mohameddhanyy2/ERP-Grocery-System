@@ -52,8 +52,8 @@ public class HrServlet extends BaseServlet {
     private void handleEmployees(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String storeId = req.getParameter("storeId");
         String sql = storeId != null
-                ? "SELECT * FROM employees WHERE storeId=? ORDER BY name"
-                : "SELECT * FROM employees ORDER BY storeId, name";
+                ? "SELECT e.*, st.storeName FROM employees e LEFT JOIN stores st ON e.storeId=st.storeId WHERE e.storeId=? ORDER BY e.name"
+                : "SELECT e.*, st.storeName FROM employees e LEFT JOIN stores st ON e.storeId=st.storeId ORDER BY e.storeId, e.name";
         List<Map<String, Object>> rows = new ArrayList<>();
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -63,6 +63,7 @@ public class HrServlet extends BaseServlet {
                     Map<String, Object> row = new LinkedHashMap<>();
                     row.put("employeeId", rs.getString("employeeId"));
                     row.put("storeId", rs.getString("storeId"));
+                    row.put("storeName", rs.getString("storeName"));
                     row.put("name", rs.getString("name"));
                     row.put("role", rs.getString("role"));
                     row.put("hourlyRate", rs.getDouble("hourlyRate"));

@@ -49,8 +49,8 @@ public class PosServlet extends BaseServlet {
     private void handleSales(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String storeId = req.getParameter("storeId");
         String sql = storeId != null
-                ? "SELECT * FROM sales WHERE storeId=? ORDER BY timestamp DESC LIMIT 200"
-                : "SELECT * FROM sales ORDER BY timestamp DESC LIMIT 200";
+                ? "SELECT s.*, COALESCE(c.name, s.customerId) as customerName FROM sales s LEFT JOIN customers c ON s.customerId=c.customerId WHERE s.storeId=? ORDER BY s.timestamp DESC LIMIT 200"
+                : "SELECT s.*, COALESCE(c.name, s.customerId) as customerName FROM sales s LEFT JOIN customers c ON s.customerId=c.customerId ORDER BY s.timestamp DESC LIMIT 200";
         List<Map<String, Object>> rows = new ArrayList<>();
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -61,6 +61,7 @@ public class PosServlet extends BaseServlet {
                     row.put("saleId", rs.getString("saleId"));
                     row.put("storeId", rs.getString("storeId"));
                     row.put("customerId", rs.getString("customerId"));
+                    row.put("customerName", rs.getString("customerName"));
                     row.put("totalAmount", rs.getDouble("totalAmount"));
                     row.put("paymentMethod", rs.getString("paymentMethod"));
                     row.put("timestamp", rs.getString("timestamp"));

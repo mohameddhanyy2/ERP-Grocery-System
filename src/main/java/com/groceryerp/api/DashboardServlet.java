@@ -63,8 +63,9 @@ public class DashboardServlet extends BaseServlet {
         double expenses = finance.getTotalExpenses(period);
         double profit   = finance.getNetProfit(period);
 
-        // Low stock stores
-        List<String> lowStockStores = central.getStoresWithLowStock();
+        // Low stock stores — resolve IDs to names
+        List<String> lowStockIds = central.getStoresWithLowStock();
+        List<String> lowStockStores = resolveStoreNames(lowStockIds);
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("period", period);
@@ -106,13 +107,13 @@ public class DashboardServlet extends BaseServlet {
 
         // Revenue by store
         List<Map<String, Object>> byStore = new ArrayList<>();
-        String storeSql = "SELECT storeId, COUNT(*) as txCount, SUM(totalAmount) as total FROM sales GROUP BY storeId";
+        String storeSql = "SELECT s.storeId, COALESCE(st.storeName, s.storeId) as storeName, COUNT(*) as txCount, SUM(s.totalAmount) as total FROM sales s LEFT JOIN stores st ON s.storeId=st.storeId GROUP BY s.storeId";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(storeSql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 Map<String, Object> row = new LinkedHashMap<>();
-                row.put("storeId", rs.getString("storeId"));
+                row.put("storeId", rs.getString("storeName"));
                 row.put("transactions", rs.getInt("txCount"));
                 row.put("revenue", rs.getDouble("total"));
                 byStore.add(row);
@@ -142,6 +143,22 @@ public class DashboardServlet extends BaseServlet {
                 "revenueByStore", byStore,
                 "stockByCategory", categoryStock
         ));
+    }
+
+    private List<String> resolveStoreNames(List<String> storeIds) {
+        if (storeIds.isEmpty()) return storeIds;
+        List<String> names = new ArrayList<>();
+        String sql = "SELECT storeId, storeName FROM stores";
+        Map<String, String> nameMap = new LinkedHashMap<>();
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) nameMap.put(rs.getString("storeId"), rs.getString("storeName"));
+        } catch (SQLException e) {
+            System.out.println("Failed to resolve store names: " + e.getMessage());
+        }
+        for (String id : storeIds) names.add(nameMap.getOrDefault(id, id));
+        return names;
     }
 
     private int countTable(String table) {

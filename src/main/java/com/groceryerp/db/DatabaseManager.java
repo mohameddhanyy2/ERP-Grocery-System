@@ -138,7 +138,8 @@ public class DatabaseManager {
                 "  storeId TEXT NOT NULL," +
                 "  orderDate TEXT NOT NULL," +
                 "  totalCost REAL DEFAULT 0.0," +
-                "  status TEXT NOT NULL DEFAULT 'PENDING'" +
+                "  status TEXT NOT NULL DEFAULT 'PENDING'," +
+                "  productAlertId TEXT" +
                 ")"
             );
             stmt.execute(
@@ -254,6 +255,19 @@ public class DatabaseManager {
                 "  amount REAL NOT NULL" +
                 ")"
             );
+
+            // ── Supplier products catalogue ────────────────────────
+            stmt.execute(
+                "CREATE TABLE IF NOT EXISTS supplier_products (" +
+                "  supplierId TEXT NOT NULL," +
+                "  productId TEXT NOT NULL," +
+                "  PRIMARY KEY (supplierId, productId)" +
+                ")"
+            );
+
+            // Migration: add productAlertId if it doesn't exist yet (safe to run every startup)
+            try { stmt.execute("ALTER TABLE purchase_orders ADD COLUMN productAlertId TEXT"); }
+            catch (SQLException ignored) { /* column already exists */ }
 
             System.out.println("[DB] Database initialized successfully.");
         } catch (SQLException e) {

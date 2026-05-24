@@ -5,28 +5,124 @@ import PageHeader from '../components/PageHeader';
 import LoadingSpinner from '../components/LoadingSpinner';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
-import { Plus } from 'lucide-react';
-const fmt = (n) => `EGP ${Number(n).toFixed(2)}`;
+import { Plus, AlertTriangle, ChevronDown, ChevronRight, X } from 'lucide-react';
+import { fmt } from '../utils/fmt';
+
+function SupplierRow({ supplier, products, onMsg }) {
+  const [expanded, setExpanded]         = useState(false);
+  const [assigned, setAssigned]         = useState(null); // null = not loaded
+  const [addingProduct, setAddingProduct] = useState('');
+
+  const loadAssigned = async () => {
+    if (assigned !== null) { setExpanded(e => !e); return; }
+    try {
+      const data = await api.supplierProducts(supplier.supplierId);
+      setAssigned(data);
+      setExpanded(true);
+    } catch (err) { onMsg('Error: ' + err.message); }
+  };
+
+  const handleAdd = async () => {
+    if (!addingProduct) return;
+    try {
+      await api.assignProduct({ supplierId: supplier.supplierId, productId: addingProduct });
+      const data = await api.supplierProducts(supplier.supplierId);
+      setAssigned(data);
+      setAddingProduct('');
+    } catch (err) { onMsg('Error: ' + err.message); }
+  };
+
+  const handleRemove = async (productId) => {
+    try {
+      await api.removeProduct({ supplierId: supplier.supplierId, productId });
+      setAssigned(a => a.filter(p => p.productId !== productId));
+    } catch (err) { onMsg('Error: ' + err.message); }
+  };
+
+  const unassignedProducts = products.filter(
+    p => !assigned?.some(a => a.productId === p.productId)
+  );
+
+  return (
+    <>
+      <tr className="table-row cursor-pointer" onClick={loadAssigned}>
+        <td className="px-4 py-3 font-medium text-white flex items-center gap-2">
+          {expanded ? <ChevronDown size={13} className="text-gray-500" /> : <ChevronRight size={13} className="text-gray-500" />}
+          {supplier.name}
+        </td>
+        <td className="px-4 py-3 text-gray-400">{supplier.contactEmail || '—'}</td>
+        <td className="px-4 py-3 text-gray-400">{supplier.leadTimeDays} days</td>
+        <td className="px-4 py-3 text-gray-500 text-xs">
+          {assigned !== null ? `${assigned.length} product${assigned.length !== 1 ? 's' : ''}` : ''}
+        </td>
+      </tr>
+      {expanded && assigned !== null && (
+        <tr className="bg-gray-900/50">
+          <td colSpan={4} className="px-6 pb-4 pt-2">
+            <p className="text-xs text-gray-500 uppercase font-medium mb-2">Products supplied</p>
+            {assigned.length === 0
+              ? <p className="text-xs text-gray-600 mb-2">No products assigned yet.</p>
+              : (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {assigned.map(p => (
+                    <span key={p.productId} className="flex items-center gap-1 text-xs bg-gray-800 border border-gray-700 rounded-full px-3 py-1 text-gray-300">
+                      {p.productName}
+                      <button onClick={e => { e.stopPropagation(); handleRemove(p.productId); }} className="text-gray-500 hover:text-red-400 ml-1">
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )
+            }
+            {unassignedProducts.length > 0 && (
+              <div className="flex gap-2 items-center" onClick={e => e.stopPropagation()}>
+                <select
+                  className="input text-xs py-1 h-8 flex-1 max-w-xs"
+                  value={addingProduct}
+                  onChange={e => setAddingProduct(e.target.value)}
+                >
+                  <option value="">Assign a product…</option>
+                  {unassignedProducts.map(p => (
+                    <option key={p.productId} value={p.productId}>{p.name}</option>
+                  ))}
+                </select>
+                <button
+                  className="btn-primary text-xs py-1 px-3 h-8"
+                  disabled={!addingProduct}
+                  onClick={handleAdd}
+                >
+                  Assign
+                </button>
+              </div>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
 
 export default function Supplier() {
   const stores = useStores();
   const [suppliers, setSuppliers] = useState([]);
   const [orders, setOrders]       = useState([]);
+  const [alerts, setAlerts]       = useState([]);
   const [products, setProducts]   = useState([]);
-  const [tab, setTab]             = useState('orders');
+  const [tab, setTab]             = useState('alerts');
   const [loading, setLoading]     = useState(true);
-  const [showOrder, setShowOrder] = useState(false);
   const [showSupplier, setShowSupplier] = useState(false);
+  const [showOrder, setShowOrder] = useState(false);
   const [msg, setMsg]             = useState('');
-  const [orderForm, setOrderForm] = useState({ supplierId: '', productId: '', quantity: '', storeId: '' });
   const [supForm, setSupForm]     = useState({ name: '', contactEmail: '', leadTimeDays: '3' });
-  const [deliverOrder, setDeliverOrder] = useState(null); // order being delivered
+  const [orderForm, setOrderForm] = useState({ supplierId: '', productId: '', quantity: '', storeId: '' });
+  const [deliverOrder, setDeliverOrder] = useState(null);
   const [orderLines, setOrderLines]     = useState([]);
 
   const load = () => {
     setLoading(true);
-    Promise.all([api.suppliers(), api.orders(), api.products()])
-      .then(([s, o, p]) => { setSuppliers(s); setOrders(o); setProducts(p); })
+    Promise.all([api.suppliers(), api.orders(), api.stockAlerts(), api.products()])
+      .then(([s, o, a, p]) => { setSuppliers(s); setOrders(o); setAlerts(a); setProducts(p); })
       .catch(console.error)
       .finally(() => setLoading(false));
   };
@@ -36,7 +132,7 @@ export default function Supplier() {
     e.preventDefault();
     try {
       const r = await api.placeOrder({ ...orderForm, quantity: Number(orderForm.quantity) });
-      setMsg(`Result: ${r.result}`);
+      setMsg(`Order placed: ${r.result}`);
       setShowOrder(false);
       setOrderForm({ supplierId: '', productId: '', quantity: '', storeId: '' });
       load();
@@ -74,16 +170,35 @@ export default function Supplier() {
   };
 
   const statusBadge = (s) => {
-    if (s === 'DELIVERED') return <span className="badge-green">Delivered</span>;
-    if (s === 'PENDING')   return <span className="badge-yellow">Pending</span>;
+    if (s === 'DELIVERED')        return <span className="badge-green">Delivered</span>;
+    if (s === 'OUT_FOR_DELIVERY') return <span className="badge-purple">Out for Delivery</span>;
+    if (s === 'ACCEPTED')         return <span className="badge-blue">Accepted</span>;
+    if (s === 'QUOTED')           return <span className="badge-yellow">Quoted</span>;
     return <span className="badge-blue">{s}</span>;
+  };
+
+  const handleAccept = async (orderId) => {
+    try {
+      await api.acceptOrder(orderId);
+      setMsg('Order accepted.');
+      load();
+    } catch (err) { setMsg('Error: ' + err.message); }
+  };
+
+  const alertStatusBadge = (alert) => {
+    if (!alert.orderId)                          return <span className="badge-yellow">Awaiting Quote</span>;
+    if (alert.orderStatus === 'QUOTED')          return <span className="badge-yellow">Quote Received</span>;
+    if (alert.orderStatus === 'ACCEPTED')        return <span className="badge-blue">Accepted</span>;
+    if (alert.orderStatus === 'OUT_FOR_DELIVERY') return <span className="badge-purple">Out for Delivery</span>;
+    if (alert.orderStatus === 'DELIVERED')       return <span className="badge-green">Delivered</span>;
+    return <span className="badge-blue">{alert.orderStatus}</span>;
   };
 
   return (
     <div>
       <PageHeader
         title="Supplier Management"
-        subtitle="Purchase orders and supplier directory"
+        subtitle="Low-stock alerts, purchase orders, and supplier directory"
         action={
           <div className="flex gap-2">
             <button className="btn-secondary flex items-center gap-2" onClick={() => setShowSupplier(true)}><Plus size={14} /> Add Supplier</button>
@@ -96,6 +211,7 @@ export default function Supplier() {
 
       <div className="flex gap-1 mb-4 bg-gray-900 rounded-lg p-1 w-fit">
         {[
+          { key: 'alerts',    label: `Low Stock Alerts (${alerts.length})` },
           { key: 'orders',    label: `Orders (${orders.length})` },
           { key: 'suppliers', label: `Suppliers (${suppliers.length})` },
         ].map(t => (
@@ -106,8 +222,45 @@ export default function Supplier() {
         ))}
       </div>
 
-      {loading ? <LoadingSpinner /> : tab === 'orders' ? (
-        orders.length === 0 ? <EmptyState text="No orders yet. Add a supplier and place an order." /> : (
+      {loading ? <LoadingSpinner /> : tab === 'alerts' ? (
+        alerts.length === 0 ? <EmptyState text="No low-stock alerts. All products are sufficiently stocked." /> : (
+          <div className="card p-0 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-800 text-left">
+                  {['Product', 'Store', 'Current Qty', 'Threshold', 'Alert Date', 'Order', 'Status'].map(h => (
+                    <th key={h} className="px-4 py-3 text-xs text-gray-500 font-medium uppercase">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {alerts.map((a, i) => (
+                  <tr key={i} className="table-row">
+                    <td className="px-4 py-3 text-white flex items-center gap-2">
+                      <AlertTriangle size={13} className="text-amber-400 flex-shrink-0" />
+                      {a.productName}
+                    </td>
+                    <td className="px-4 py-3 text-gray-400">{a.storeName}</td>
+                    <td className="px-4 py-3 text-red-400 font-semibold">{a.currentQty}</td>
+                    <td className="px-4 py-3 text-gray-500">{a.threshold}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{a.alertDate}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{a.orderId || '—'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {alertStatusBadge(a)}
+                        {a.orderStatus === 'QUOTED' && (
+                          <button className="btn-primary text-xs py-1 px-2" onClick={() => handleAccept(a.orderId)}>Accept</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : tab === 'orders' ? (
+        orders.length === 0 ? <EmptyState text="No orders yet. Suppliers submit quotes via the Supplier Portal." /> : (
           <div className="card p-0 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -122,12 +275,15 @@ export default function Supplier() {
                   <tr key={i} className="table-row">
                     <td className="px-4 py-3 font-mono text-xs text-gray-400">{o.orderId}</td>
                     <td className="px-4 py-3 text-white">{o.supplierName || o.supplierId}</td>
-                    <td className="px-4 py-3 text-gray-400">{stores.find(s => s.id === o.storeId)?.name || o.storeId}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{o.orderDate?.slice(0, 24)}</td>
+                    <td className="px-4 py-3 text-gray-400">{o.storeName || o.storeId}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{o.orderDate?.slice(0, 10)}</td>
                     <td className="px-4 py-3 font-semibold text-amber-400">{fmt(o.totalCost)}</td>
                     <td className="px-4 py-3">{statusBadge(o.status)}</td>
                     <td className="px-4 py-3">
-                      {o.status === 'PENDING' && (
+                      {o.status === 'QUOTED' && (
+                        <button className="btn-primary text-xs py-1 px-2" onClick={() => handleAccept(o.orderId)}>Accept</button>
+                      )}
+                      {o.status === 'OUT_FOR_DELIVERY' && (
                         <button className="btn-secondary text-xs py-1 px-2" onClick={() => openDelivery(o)}>Mark Delivered</button>
                       )}
                     </td>
@@ -143,63 +299,19 @@ export default function Supplier() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-800 text-left">
-                  {['Name', 'Email', 'Lead Time'].map(h => (
+                  {['Name', 'Email', 'Lead Time', 'Products'].map(h => (
                     <th key={h} className="px-4 py-3 text-xs text-gray-500 font-medium uppercase">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {suppliers.map((s, i) => (
-                  <tr key={i} className="table-row">
-                    <td className="px-4 py-3 font-medium text-white">{s.name}</td>
-                    <td className="px-4 py-3 text-gray-400">{s.contactEmail || '—'}</td>
-                    <td className="px-4 py-3 text-gray-400">{s.leadTimeDays} days</td>
-                  </tr>
+                {suppliers.map(s => (
+                  <SupplierRow key={s.supplierId} supplier={s} products={products} onMsg={setMsg} />
                 ))}
               </tbody>
             </table>
           </div>
         )
-      )}
-
-      {showOrder && (
-        <Modal title="Place Purchase Order" onClose={() => setShowOrder(false)}>
-          {suppliers.length === 0 || products.length === 0 ? (
-            <p className="text-sm text-amber-400">You need at least one supplier and one product before placing an order.</p>
-          ) : (
-            <form onSubmit={handleOrder} className="space-y-3">
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Supplier</label>
-                <select className="input" value={orderForm.supplierId} onChange={e => setOrderForm({ ...orderForm, supplierId: e.target.value })} required>
-                  <option value="">Select supplier…</option>
-                  {suppliers.map(s => <option key={s.supplierId} value={s.supplierId}>{s.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Product</label>
-                <select className="input" value={orderForm.productId} onChange={e => setOrderForm({ ...orderForm, productId: e.target.value })} required>
-                  <option value="">Select product…</option>
-                  {products.map(p => <option key={p.productId} value={p.productId}>{p.name} — EGP {p.price}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Store</label>
-                <select className="input" value={orderForm.storeId} onChange={e => setOrderForm({ ...orderForm, storeId: e.target.value })} required>
-                  <option value="">Select store…</option>
-                  {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Quantity</label>
-                <input type="number" min="1" className="input" value={orderForm.quantity} onChange={e => setOrderForm({ ...orderForm, quantity: e.target.value })} required />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button type="submit" className="btn-primary flex-1">Place Order</button>
-                <button type="button" className="btn-secondary flex-1" onClick={() => setShowOrder(false)}>Cancel</button>
-              </div>
-            </form>
-          )}
-        </Modal>
       )}
 
       {deliverOrder && (
@@ -231,6 +343,46 @@ export default function Supplier() {
             <button className="btn-primary flex-1" onClick={handleDeliver} disabled={orderLines.length === 0}>Confirm Delivery</button>
             <button className="btn-secondary flex-1" onClick={() => setDeliverOrder(null)}>Cancel</button>
           </div>
+        </Modal>
+      )}
+
+      {showOrder && (
+        <Modal title="Place Purchase Order" onClose={() => setShowOrder(false)}>
+          {suppliers.length === 0 || products.length === 0 ? (
+            <p className="text-sm text-amber-400">You need at least one supplier and one product before placing an order.</p>
+          ) : (
+            <form onSubmit={handleOrder} className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Supplier</label>
+                <select className="input" value={orderForm.supplierId} onChange={e => setOrderForm({ ...orderForm, supplierId: e.target.value })} required>
+                  <option value="">Select supplier…</option>
+                  {suppliers.map(s => <option key={s.supplierId} value={s.supplierId}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Product</label>
+                <select className="input" value={orderForm.productId} onChange={e => setOrderForm({ ...orderForm, productId: e.target.value })} required>
+                  <option value="">Select product…</option>
+                  {products.map(p => <option key={p.productId} value={p.productId}>{p.name} — {fmt(p.price)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Store</label>
+                <select className="input" value={orderForm.storeId} onChange={e => setOrderForm({ ...orderForm, storeId: e.target.value })} required>
+                  <option value="">Select store…</option>
+                  {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Quantity</label>
+                <input type="number" min="1" className="input" value={orderForm.quantity} onChange={e => setOrderForm({ ...orderForm, quantity: e.target.value })} required />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button type="submit" className="btn-primary flex-1">Place Order</button>
+                <button type="button" className="btn-secondary flex-1" onClick={() => setShowOrder(false)}>Cancel</button>
+              </div>
+            </form>
+          )}
         </Modal>
       )}
 

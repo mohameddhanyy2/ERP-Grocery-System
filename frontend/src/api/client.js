@@ -43,12 +43,17 @@ export const api = {
   receipt:       (saleId) => get(`/pos/receipt?saleId=${saleId}`),
 
   // Supplier
-  suppliers:     () => get('/supplier/suppliers'),
-  orders:        (storeId) => get(storeId ? `/supplier/orders?storeId=${storeId}` : '/supplier/orders'),
-  placeOrder:    (b) => post('/supplier/order', b),
-  orderLines:    (orderId) => get(`/supplier/orderlines?orderId=${orderId}`),
-  recordDelivery:(b) => post('/supplier/delivery', b),
-  addSupplier:   (b) => post('/supplier/add', b),
+  suppliers:          () => get('/supplier/suppliers'),
+  orders:             (storeId) => get(storeId ? `/supplier/orders?storeId=${storeId}` : '/supplier/orders'),
+  placeOrder:         (b) => post('/supplier/order', b),
+  stockAlerts:        () => get('/supplier/stockalerts'),
+  orderLines:         (orderId) => get(`/supplier/orderlines?orderId=${orderId}`),
+  acceptOrder:        (orderId) => post('/supplier/accept', { orderId }),
+  recordDelivery:     (b) => post('/supplier/delivery', b),
+  addSupplier:        (b) => post('/supplier/add', b),
+  supplierProducts:   (supplierId) => get(`/supplier/products?supplierId=${supplierId}`),
+  assignProduct:      (b) => post('/supplier/products', b),
+  removeProduct:      (b) => post('/supplier/removeproduct', b),
 
   // HR
   employees:     (storeId) => get(storeId ? `/hr/employees?storeId=${storeId}` : '/hr/employees'),

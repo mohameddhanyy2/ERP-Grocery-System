@@ -45,11 +45,7 @@ public class Main {
         supplierModule.setStockAlerts(centralInventory);      // IoC
         System.out.println("[IoC] SupplierModule wired (@Stateless)");
 
-        // ── 5. Wire MDB now that supplier exists ────────────────────
-        stockAlertMDB.setSupplierService(supplierModule); // IoC
-        System.out.println("[IoC] StockAlertMDB wired with ISupplierService");
-
-        // ── 6. Customer and POS — mutual back-wire ──────────────────
+        // ── 5. Customer and POS — mutual back-wire ──────────────────
         CustomerModule customerModule = new CustomerModule();
         POSModule posModule = new POSModule();
         posModule.setCustomerData(customerModule);        // IoC
