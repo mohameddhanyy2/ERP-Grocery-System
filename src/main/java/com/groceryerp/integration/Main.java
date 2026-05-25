@@ -41,32 +41,32 @@ public class Main {
 
         // ── 4. Supplier — requires inventory interfaces ─────────────
         SupplierModule supplierModule = new SupplierModule();
-        supplierModule.setCentralInventory(centralInventory); // IoC
-        supplierModule.setStockAlerts(centralInventory);      // IoC
+        supplierModule.setCentralInventory(centralInventory);
+        supplierModule.setStockAlerts(centralInventory);
         System.out.println("[IoC] SupplierModule wired (@Stateless)");
 
         // ── 5. Customer and POS — mutual back-wire ──────────────────
         CustomerModule customerModule = new CustomerModule();
         POSModule posModule = new POSModule();
-        posModule.setCustomerData(customerModule);        // IoC
-        posModule.setLoyaltyService(customerModule);      // IoC
-        customerModule.setSalesData(posModule);           // IoC — back-wire
+        posModule.setCustomerData(customerModule);
+        posModule.setLoyaltyService(customerModule);
+        customerModule.setSalesData(posModule);
         System.out.println("[IoC] POSModule + CustomerModule wired (@Stateless)");
 
         // ── 7. Finance — requires sales, staff, orders ─────────────
         FinanceModule financeModule = new FinanceModule();
-        financeModule.setSalesData(posModule);            // IoC
-        financeModule.setStaffData(hrModule);             // IoC
-        financeModule.setOrderStatus(supplierModule);     // IoC
+        financeModule.setSalesData(posModule);
+        financeModule.setStaffData(hrModule);
+        financeModule.setOrderStatus(supplierModule);
         System.out.println("[IoC] FinanceModule wired (@Stateless)");
 
         // ── 8. Reporting — requires all five interfaces ─────────────
         ReportingModule reportingModule = new ReportingModule();
-        reportingModule.setSalesData(posModule);          // IoC
-        reportingModule.setStaffData(hrModule);           // IoC
-        reportingModule.setTotalStock(centralInventory);  // IoC
-        reportingModule.setFinanceData(financeModule);    // IoC
-        reportingModule.setCustomerData(customerModule);  // IoC
+        reportingModule.setSalesData(posModule);
+        reportingModule.setStaffData(hrModule);
+        reportingModule.setTotalStock(centralInventory);
+        reportingModule.setFinanceData(financeModule);
+        reportingModule.setCustomerData(customerModule);
         System.out.println("[IoC] ReportingModule wired with all 5 interfaces (@Stateless)\n");
 
         // ── 9. Start REST API server ────────────────────────────────

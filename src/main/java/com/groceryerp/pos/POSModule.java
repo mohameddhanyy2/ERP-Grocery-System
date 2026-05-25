@@ -30,7 +30,7 @@ import java.util.List;
  * and returns a result. No sale data is stored in memory between calls.
  *
  * PROVIDED interfaces: ISalesData, IReceiptService
- * REQUIRED interfaces: IStoreInventory, ICustomerData (injected via IoC setters)
+ * REQUIRED interfaces: IStoreInventory, ICustomerData, ILoyaltyService, CentralInventoryBean
  *
  * Bean type: @Stateless — no conversational state, all data flows through parameters and DAOs.
  */
@@ -87,7 +87,10 @@ public class POSModule implements ISalesData, IReceiptService {
      * @throws IllegalStateException if stock is insufficient for any item
      */
     public SaleBean processSale(List<SaleItemBean> items, String storeId, String customerId, String paymentMethod, double amountPaid) {
-        IStoreInventory store = centralInventory != null ? centralInventory.getStore(storeId) : storeInventory;
+        IStoreInventory store = storeInventory;
+        if (centralInventory != null) {
+            store = centralInventory.getStore(storeId);
+        }
         if (store == null) throw new IllegalStateException("Unknown store: " + storeId);
 
         ProductBean.DAO productDao = new ProductBean.DAO();
