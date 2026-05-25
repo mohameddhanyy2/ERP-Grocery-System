@@ -11,13 +11,7 @@ import com.groceryerp.pos.POSModule;
 import com.groceryerp.reporting.ReportingModule;
 import com.groceryerp.supplier.SupplierModule;
 
-/**
- * Main — IoC assembler for the Grocery ERP system.
- *
- * This is the ONLY class that instantiates modules and wires dependencies.
- * No module creates another module internally — that is the IoC contract.
- * All wiring uses setter injection following the exact dependency order below.
- */
+
 public class Main {
 
     public static void main(String[] args) {
