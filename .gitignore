@@ -53,3 +53,7 @@ desktop.ini
 # ===== Database =====
 *.db
 *.sqlite
+
+CLAUDE.md
+.claude
+graphify-out/
