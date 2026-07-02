@@ -1,24 +1,39 @@
 package com.groceryerp.finance.beans;
 
-import com.groceryerp.db.DatabaseManager;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 
-// @Entity
-// @Table(name="revenue")
-/*
- * RevenueBean — Entity Bean mapped to the {@code revenue} table.
- * One row per revenue record per store per period. Bean type: @Entity.
+/**
+ * RevenueBean — JPA entity mapped to the {@code revenue} table.
+ * One row per revenue record per store per period.
+ *
+ * Was: a plain JavaBean with a nested {@code DAO} static class that hand-wrote
+ * SQLite SQL (INSERT OR REPLACE / SELECT SUM). The DAO is gone — persistence is
+ * now handled by {@link com.groceryerp.finance.FinanceRepository} via the
+ * container-managed EntityManager.
  */
-/** JavaBean representing revenue for a period/store. */
+@Entity
+@Table(name = "revenue")
 public class RevenueBean implements Serializable {
+
+    @Id
+    @Column(name = "revenueId")
     private String revenueId;
+
+    @Column(name = "period")
     private String period;
+
+    @Column(name = "grossRevenue")
     private double grossRevenue;
+
+    @Column(name = "storeId")
     private String storeId;
+
+    @Column(name = "saleId")
+    private String saleId;
 
     public RevenueBean() {}
 
@@ -34,41 +49,8 @@ public class RevenueBean implements Serializable {
     public double getGrossRevenue() { return grossRevenue; }
     public void setGrossRevenue(double grossRevenue) { this.grossRevenue = grossRevenue; }
 
-    // ── Nested DAO ─────────────────────────────────────────────────
-
-    /** Handles all persistence operations for the revenue table. */
-    public static class DAO {
-
-        /** Persists a RevenueBean to the revenue table. */
-        public void save(RevenueBean revenue) {
-            String sql = "INSERT OR REPLACE INTO revenue (revenueId,period,storeId,grossRevenue) VALUES (?,?,?,?)";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, revenue.getRevenueId());
-                ps.setString(2, revenue.getPeriod());
-                ps.setString(3, revenue.getStoreId());
-                ps.setDouble(4, revenue.getGrossRevenue());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                System.out.println("Failed to save revenue: " + e.getMessage());
-            }
-        }
-
-        /** Returns the sum of grossRevenue for a given period. */
-        public double sumByPeriod(String period) {
-            String sql = "SELECT SUM(grossRevenue) FROM revenue WHERE period = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, period);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) { return rs.getDouble(1); }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to sum revenue: " + e.getMessage());
-            }
-            return 0.0;
-        }
-    }
+    public String getSaleId() { return saleId; }
+    public void setSaleId(String saleId) { this.saleId = saleId; }
 }
 
 // conflicts resolved by: Omar Khalifa

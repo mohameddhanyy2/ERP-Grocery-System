@@ -1,39 +1,52 @@
 package com.groceryerp.inventory.beans;
 
-import com.groceryerp.db.DatabaseManager;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * JavaBean representing a low-stock alert raised for one product in one store.
- * <p>
- * Follows the JavaBeans specification: public class, public no-argument
- * constructor, all fields private, and a public getter/setter for every
- * field. Implements {@link Serializable} so the alert can be transferred
- * between components (for example to the Supplier module).
+ * StockAlertBean — JPA entity mapped to the {@code stock_alerts} table.
+ *
+ * Was: a plain JavaBean with a nested {@code DAO} static class that hand-wrote
+ * SQLite SQL against {@code stock_alerts} (save / findByStore /
+ * deleteByProductAndStore) and against the {@code stock} table
+ * (findLowStockProductIds). The DAO is gone — persistence is now handled by
+ * {@link com.groceryerp.inventory.InventoryRepository} via the container-managed
+ * EntityManager. The annotations below ARE the table mapping (table name
+ * {@code stock_alerts} taken from the original DAO SQL).
  */
+@Entity
+@Table(name = "stock_alerts")
 public class StockAlertBean implements Serializable {
 
-    //@Id
-    private String alertId; // Unique identifier for the alert, e.g. "ALERT-1234567890".
+    /** Unique identifier for the alert, e.g. "ALERT-1234567890". */
+    @Id
+    @Column(name = "alertId")
+    private String alertId;
+
     /** Product code the alert is about. */
+    @Column(name = "productId")
     private String productId;
+
     /** Store the alert was raised in. */
+    @Column(name = "storeId")
     private String storeId;
+
     /** Quantity currently on hand when the alert was raised. */
+    @Column(name = "currentQty")
     private int currentQty;
+
     /** Threshold below which the alert fires. */
+    @Column(name = "threshold")
     private int threshold;
+
     /** Date the alert was raised, e.g. "2026-05-23". */
+    @Column(name = "alertDate")
     private String alertDate;
 
-    /** Public no-argument constructor required by the JavaBeans spec. */
+    /** Public no-argument constructor required by the JavaBeans / JPA spec. */
     public StockAlertBean() { /* no-arg constructor required by JavaBeans spec */ }
 
     // ── JavaBean accessors ──────────────────────────────────────────
@@ -69,87 +82,6 @@ public class StockAlertBean implements Serializable {
 
     /** @param alertDate the alert date to set. */
     public void setAlertDate(String alertDate) { this.alertDate = alertDate; }
-
-    // ── Nested DAO ─────────────────────────────────────────────────
-
-    /** Handles persistence for stock_alerts and low-stock queries against the stock table. */
-    public static class DAO {
-
-        /** Persists a StockAlertBean to the stock_alerts table. */
-        public void save(StockAlertBean alert) {
-            String sql = "INSERT OR REPLACE INTO stock_alerts (alertId,productId,storeId,currentQty,threshold,alertDate) VALUES (?,?,?,?,?,?)";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, alert.getAlertId());
-                ps.setString(2, alert.getProductId());
-                ps.setString(3, alert.getStoreId());
-                ps.setInt(4, alert.getCurrentQty());
-                ps.setInt(5, alert.getThreshold());
-                ps.setString(6, alert.getAlertDate());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                System.out.println("Failed to save stock alert: " + e.getMessage());
-            }
-        }
-
-        /** Returns all stock alerts for a given store. */
-        public List<StockAlertBean> findByStore(String storeId) {
-            List<StockAlertBean> list = new ArrayList<>();
-            String sql = "SELECT alertId,productId,storeId,currentQty,threshold,alertDate FROM stock_alerts WHERE storeId = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, storeId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        StockAlertBean a = new StockAlertBean();
-                        a.setAlertId(rs.getString("alertId"));
-                        a.setProductId(rs.getString("productId"));
-                        a.setStoreId(rs.getString("storeId"));
-                        a.setCurrentQty(rs.getInt("currentQty"));
-                        a.setThreshold(rs.getInt("threshold"));
-                        a.setAlertDate(rs.getString("alertDate"));
-                        list.add(a);
-                    }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to find stock alerts: " + e.getMessage());
-            }
-            return list;
-        }
-
-        /** Deletes all alerts for a given product and store (called when a restock alert is resolved). */
-        public void deleteByProductAndStore(String productId, String storeId) {
-            String sql = "DELETE FROM stock_alerts WHERE productId = ? AND storeId = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, productId);
-                ps.setString(2, storeId);
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                System.out.println("Failed to delete stock alert: " + e.getMessage());
-            }
-        }
-
-        /**
-         * Returns product IDs in the stock table where quantity is below the threshold for a given store.
-         * Queries the stock table directly (not stock_alerts).
-         */
-        public List<String> findLowStockProductIds(String storeId, int threshold) {
-            List<String> list = new ArrayList<>();
-            String sql = "SELECT productId FROM stock WHERE storeId = ? AND quantity < ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, storeId);
-                ps.setInt(2, threshold);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) { list.add(rs.getString("productId")); }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to find low stock products: " + e.getMessage());
-            }
-            return list;
-        }
-    }
 }
 
 // conflicts resolved by: Omar Khalifa

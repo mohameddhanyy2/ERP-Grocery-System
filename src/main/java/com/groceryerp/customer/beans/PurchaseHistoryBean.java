@@ -1,26 +1,35 @@
 package com.groceryerp.customer.beans;
 
-import com.groceryerp.db.DatabaseManager;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
-// @Entity
-// @Table(name="purchase_history")
-/*
- * PurchaseHistoryBean — Entity Bean mapped to the {@code purchase_history} table.
- * One row per purchase history entry for a customer. Bean type: @Entity.
+/**
+ * PurchaseHistoryBean — JPA entity mapped to the {@code purchase_history} table.
+ *
+ * Was: a JavaBean with a nested DAO (INSERT OR REPLACE + a SELECT saleId query).
+ * Persistence now flows through {@link com.groceryerp.customer.CustomerRepository}.
  */
+@Entity
+@Table(name = "purchase_history")
 public class PurchaseHistoryBean implements Serializable {
+
+    @Id
+    @Column(name = "historyId")
     private String historyId;
+
+    @Column(name = "customerId")
     private String customerId;
+
+    @Column(name = "saleId")
     private String saleId;
+
+    @Column(name = "date")
     private String date;
+
+    @Column(name = "amount")
     private double amount;
 
     public PurchaseHistoryBean() {}
@@ -39,44 +48,4 @@ public class PurchaseHistoryBean implements Serializable {
 
     public double getAmount() { return amount; }
     public void setAmount(double amount) { this.amount = amount; }
-
-    // ── Nested DAO ─────────────────────────────────────────────────
-
-    /** Handles all persistence operations for the purchase_history table. */
-    public static class DAO {
-
-        /** Persists a PurchaseHistoryBean to the purchase_history table. */
-        public void save(PurchaseHistoryBean history) {
-            String sql = "INSERT OR REPLACE INTO purchase_history (historyId,customerId,saleId,date,amount) VALUES (?,?,?,?,?)";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, history.getHistoryId());
-                ps.setString(2, history.getCustomerId());
-                ps.setString(3, history.getSaleId());
-                ps.setString(4, history.getDate());
-                ps.setDouble(5, history.getAmount());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                System.out.println("Failed to save purchase history: " + e.getMessage());
-            }
-        }
-
-        /** Returns all sale IDs from purchase history for a given customer. */
-        public List<String> findIdsByCustomer(String customerId) {
-            List<String> list = new ArrayList<>();
-            String sql = "SELECT saleId FROM purchase_history WHERE customerId = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, customerId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) { list.add(rs.getString("saleId")); }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to find purchase history: " + e.getMessage());
-            }
-            return list;
-        }
-    }
 }
-
-// conflicts resolved by: Omar Khalifa

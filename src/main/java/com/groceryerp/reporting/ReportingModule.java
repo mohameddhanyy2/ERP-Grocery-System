@@ -1,62 +1,47 @@
 package com.groceryerp.reporting;
 
-// @Stateless
-// Chosen because each report is generated fresh per call — no report state
-// is carried between calls. The module holds only final service fields.
-
-import com.groceryerp.interfaces.ICustomerData;
-import com.groceryerp.interfaces.IFinanceData;
 import com.groceryerp.interfaces.IReportData;
-import com.groceryerp.interfaces.ISalesData;
-import com.groceryerp.interfaces.IStaffData;
-import com.groceryerp.interfaces.ITotalStock;
 import com.groceryerp.reporting.beans.ReportBean;
 import com.groceryerp.reporting.services.DataCollector;
 import com.groceryerp.reporting.services.ExportService;
 import com.groceryerp.reporting.services.ReportGenerator;
+import jakarta.ejb.EJB;
+import jakarta.ejb.LocalBean;
+import jakarta.ejb.Stateless;
 
 /**
- * ReportingModule — Stateless Session Bean. Consumer-only component.
+ * ReportingModule — @Stateless Session Bean. Consumer-only component.
  *
- * Reads from all modules via five injected interfaces, writes to none.
- * Each call to generateReport() or exportCSV() produces a fresh result
- * with no state carried over from previous calls.
+ * Reads from all modules via five required interfaces, writes to none. Each call
+ * to generateReport() or exportCSV() produces a fresh result with no state
+ * carried over from previous calls.
  *
  * PROVIDED interfaces: IReportData
  * REQUIRED interfaces: ISalesData, IStaffData, ITotalStock, IFinanceData, ICustomerData
  *
+ * MIGRATION: the five setSalesData/setStaffData/setTotalStock/setFinanceData/
+ * setCustomerData setters (formerly called from Main to forward dependencies into
+ * the internal DataCollector) are GONE. The required interfaces are now injected
+ * by the container directly into {@link DataCollector} via {@code @Inject}, so
+ * this module no longer forwards them. The three service helpers, previously
+ * {@code new}-ed and hand-wired in the constructor, are now container-managed
+ * {@code @Stateless} beans injected via {@code @EJB}.
+ *
  * Bean type: @Stateless — no conversational state, every report is computed on demand.
  */
+@Stateless
+@LocalBean
 public class ReportingModule implements IReportData {
 
-    // ── Internal service fields (infrastructure, not business state) ──
-    private final DataCollector dataCollector;
-    private final ReportGenerator reportGenerator;
-    private final ExportService exportService;
+    // ── Container-injected service collaborators (replace the new-ed fields) ──
+    @EJB
+    private DataCollector dataCollector;
+    @EJB
+    private ReportGenerator reportGenerator;
+    @EJB
+    private ExportService exportService;
 
-    public ReportingModule() {
-        this.dataCollector   = new DataCollector();
-        this.reportGenerator = new ReportGenerator();
-        this.exportService   = new ExportService();
-        this.reportGenerator.setDataCollector(dataCollector);
-    }
-
-    // ── IoC setters — wire required interfaces into DataCollector ──
-
-    /** Injects the sales data dependency. */
-    public void setSalesData(ISalesData s)      { dataCollector.setSalesData(s); }
-
-    /** Injects the staff data dependency. */
-    public void setStaffData(IStaffData s)      { dataCollector.setStaffData(s); }
-
-    /** Injects the total stock dependency. */
-    public void setTotalStock(ITotalStock t)    { dataCollector.setTotalStock(t); }
-
-    /** Injects the finance data dependency. */
-    public void setFinanceData(IFinanceData f)  { dataCollector.setFinanceData(f); }
-
-    /** Injects the customer data dependency. */
-    public void setCustomerData(ICustomerData c){ dataCollector.setCustomerData(c); }
+    public ReportingModule() { /* required no-arg constructor for the container */ }
 
     // ── IReportData (provided) ────────────────────────────────────
 

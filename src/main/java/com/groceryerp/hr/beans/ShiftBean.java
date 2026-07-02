@@ -1,30 +1,42 @@
 package com.groceryerp.hr.beans;
-import com.groceryerp.db.DatabaseManager;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
-// @Entity
-// @Table(name="shifts")
-/*
- * ShiftBean — Entity Bean mapped to the {@code shifts} table.
- * One row per work shift for an employee. Bean type: @Entity.
+/**
+ * ShiftBean — JPA entity mapped to the {@code shifts} table.
+ * One row per work shift for an employee.
+ *
+ * Was: a plain JavaBean with a nested {@code DAO} static class that hand-wrote
+ * SQLite SQL (INSERT OR REPLACE / SELECT ... LIKE). The DAO is gone —
+ * persistence is now handled by {@link com.groceryerp.hr.HRRepository} via the
+ * container-managed EntityManager. The annotations below ARE the table mapping.
  */
-
-/* JavaBean representing a shift in the HR module. */
+@Entity
+@Table(name = "shifts")
 public class ShiftBean implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @Column(name = "shiftId")
     private String shiftId;
+
+    @Column(name = "employeeId")
     private String employeeId;
+
+    @Column(name = "storeId")
     private String storeId;
+
+    @Column(name = "shiftStart")
     private String shiftStart;
+
+    @Column(name = "shiftEnd")
     private String shiftEnd;
+
+    @Column(name = "hoursWorked")
     private double hoursWorked;
 
     public ShiftBean() {}
@@ -71,55 +83,4 @@ public class ShiftBean implements Serializable {
     public void setHoursWorked(double hoursWorked) {
         this.hoursWorked = hoursWorked;
     }
-
-    // ── Nested DAO ─────────────────────────────────────────────────
-
-    /** Handles all persistence operations for the shifts table. */
-    public static class DAO {
-
-        /** Persists a ShiftBean to the shifts table. */
-        public void save(ShiftBean shift) {
-            String sql = "INSERT OR REPLACE INTO shifts (shiftId,employeeId,storeId,shiftStart,shiftEnd,hoursWorked) VALUES (?,?,?,?,?,?)";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, shift.getShiftId());
-                ps.setString(2, shift.getEmployeeId());
-                ps.setString(3, shift.getStoreId());
-                ps.setString(4, shift.getShiftStart());
-                ps.setString(5, shift.getShiftEnd());
-                ps.setDouble(6, shift.getHoursWorked());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                System.out.println("Failed to save shift: " + e.getMessage());
-            }
-        }
-
-        /** Returns all shifts for an employee in a given period (shiftStart LIKE period%). */
-        public List<ShiftBean> findByEmployeeAndPeriod(String employeeId, String period) {
-            List<ShiftBean> list = new ArrayList<>();
-            String sql = "SELECT shiftId,employeeId,storeId,shiftStart,shiftEnd,hoursWorked FROM shifts WHERE employeeId = ? AND shiftStart LIKE ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, employeeId);
-                ps.setString(2, period + "%");
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        ShiftBean s = new ShiftBean();
-                        s.setShiftId(rs.getString("shiftId"));
-                        s.setEmployeeId(rs.getString("employeeId"));
-                        s.setStoreId(rs.getString("storeId"));
-                        s.setShiftStart(rs.getString("shiftStart"));
-                        s.setShiftEnd(rs.getString("shiftEnd"));
-                        s.setHoursWorked(rs.getDouble("hoursWorked"));
-                        list.add(s);
-                    }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to find shifts: " + e.getMessage());
-            }
-            return list;
-        }
-    }
 }
-
-// conflicts resolved by: Omar Khalifa

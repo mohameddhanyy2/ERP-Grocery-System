@@ -5,32 +5,32 @@
 
 @layer base {
   body {
-    @apply bg-gray-950 text-gray-100 font-sans;
+    @apply bg-gray-50 text-gray-800 font-sans;
   }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { @apply bg-gray-900; }
-  ::-webkit-scrollbar-thumb { @apply bg-gray-700 rounded-full; }
+  ::-webkit-scrollbar-track { @apply bg-gray-100; }
+  ::-webkit-scrollbar-thumb { @apply bg-gray-300 rounded-full; }
 }
 
 @layer components {
   .card {
-    @apply bg-gray-900 border border-gray-800 rounded-xl p-6;
+    @apply bg-white border border-gray-200 rounded-xl p-6 shadow-sm;
   }
   .btn-primary {
     @apply bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm;
   }
   .btn-secondary {
-    @apply bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded-lg font-medium transition-colors text-sm;
+    @apply bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded-lg font-medium transition-colors text-sm;
   }
   .input {
-    @apply bg-gray-800 border border-gray-700 text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 w-full placeholder-gray-500;
+    @apply bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 w-full placeholder-gray-400;
   }
   .table-row {
-    @apply border-b border-gray-800 hover:bg-gray-800/50 transition-colors;
+    @apply border-b border-gray-100 hover:bg-gray-50 transition-colors;
   }
-  .badge-green  { @apply bg-emerald-900/50 text-emerald-400 text-xs px-2 py-0.5 rounded-full font-medium; }
-  .badge-yellow { @apply bg-amber-900/50 text-amber-400 text-xs px-2 py-0.5 rounded-full font-medium; }
-  .badge-red    { @apply bg-red-900/50 text-red-400 text-xs px-2 py-0.5 rounded-full font-medium; }
-  .badge-blue   { @apply bg-blue-900/50 text-blue-400 text-xs px-2 py-0.5 rounded-full font-medium; }
-  .badge-purple { @apply bg-purple-900/50 text-purple-400 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-green  { @apply bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-yellow { @apply bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-red    { @apply bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-blue   { @apply bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium; }
+  .badge-purple { @apply bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-medium; }
 }

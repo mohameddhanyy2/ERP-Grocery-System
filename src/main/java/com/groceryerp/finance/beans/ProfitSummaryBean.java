@@ -1,20 +1,21 @@
 package com.groceryerp.finance.beans;
 
-// @Stateless (value object — computed on demand, not stored in a table, no DAO)
-/**
- * ProfitSummaryBean — computed result object for profit summaries.
- * Not persisted. Bean type: @Stateless value object.
- */
 import java.io.Serializable;
 
-/** JavaBean representing a profit summary for a period. */
+/**
+ * ProfitSummaryBean — pure in-memory DTO / value object for profit summaries.
+ *
+ * NOT a JPA @Entity: it maps to no table and had no nested DAO. It is computed
+ * on demand from RevenueBean / ExpenseBean aggregates and returned to callers,
+ * never persisted. It therefore stays a plain Serializable class with no
+ * jakarta.persistence annotations.
+ */
 public class ProfitSummaryBean implements Serializable {
     private String storeId;
     private String period;
     private double grossRevenue;
     private double totalExpenses;
     private double netProfit;
-
 
     public ProfitSummaryBean() {}
 

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence
+                 https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
+             version="3.0">
+
+    <!--
+      Single persistence unit for the whole ERP. Every @Entity bean is mapped here.
+      transaction-type=JTA: transactions are managed by the application server and
+      enlisted automatically on @Stateless/@Stateful session-bean method boundaries.
+    -->
+    <persistence-unit name="groceryerp" transaction-type="JTA">
+
+        <!--
+          JTA datasource registered in the app server (standalone.xml). Points at
+          the Neon PostgreSQL database (connection URL + credentials live only in
+          WildFly's standalone.xml, never in the repo).
+        -->
+        <jta-data-source>java:/GroceryErpDS</jta-data-source>
+
+        <!-- Explicit entity list keeps deployment deterministic across servers. -->
+        <class>com.groceryerp.customer.beans.CustomerBean</class>
+        <class>com.groceryerp.customer.beans.LoyaltyBean</class>
+        <class>com.groceryerp.customer.beans.PurchaseHistoryBean</class>
+        <class>com.groceryerp.pos.beans.SaleBean</class>
+        <class>com.groceryerp.pos.beans.SaleItemBean</class>
+        <class>com.groceryerp.pos.beans.ReceiptBean</class>
+        <class>com.groceryerp.pos.beans.PaymentBean</class>
+        <class>com.groceryerp.pos.beans.DiscountBean</class>
+        <class>com.groceryerp.inventory.beans.ProductBean</class>
+        <class>com.groceryerp.inventory.beans.StockAlertBean</class>
+        <class>com.groceryerp.inventory.beans.StoreBean</class>
+        <class>com.groceryerp.inventory.beans.StockBean</class>
+        <class>com.groceryerp.finance.beans.ExpenseBean</class>
+        <class>com.groceryerp.finance.beans.RevenueBean</class>
+        <class>com.groceryerp.finance.beans.TaxBean</class>
+        <class>com.groceryerp.hr.beans.EmployeeBean</class>
+        <class>com.groceryerp.hr.beans.PayrollBean</class>
+        <class>com.groceryerp.hr.beans.ShiftBean</class>
+        <class>com.groceryerp.hr.beans.AttendanceBean</class>
+        <class>com.groceryerp.supplier.beans.SupplierBean</class>
+        <class>com.groceryerp.supplier.beans.PurchaseOrderBean</class>
+        <class>com.groceryerp.supplier.beans.OrderLineBean</class>
+        <class>com.groceryerp.supplier.beans.DeliveryBean</class>
+        <class>com.groceryerp.supplier.beans.SupplierProductBean</class>
+
+        <properties>
+            <!--
+              PostgreSQL dialect (Neon). Ships with Hibernate core — no separate
+              community-dialects jar needed. This single line is the only
+              database-language coupling.
+            -->
+            <property name="hibernate.dialect"
+                      value="org.hibernate.dialect.PostgreSQLDialect"/>
+
+            <!--
+              Hibernate generates/updates the schema from @Entity annotations,
+              replacing DatabaseManager.initializeDatabase()'s hand-written DDL.
+              NOTE: 'update' will create missing tables/columns but will NOT
+              reproduce the original FOREIGN KEY constraints or DEFAULT values
+              one-for-one unless they are annotated on the entities. See
+              MIGRATION_EJB_JPA.md "Schema divergences" for the exact list.
+            -->
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+            <property name="hibernate.show_sql" value="false"/>
+            <property name="hibernate.format_sql" value="true"/>
+        </properties>
+    </persistence-unit>
+</persistence>

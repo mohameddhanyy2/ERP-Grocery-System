@@ -1,41 +1,61 @@
 package com.groceryerp.inventory.beans;
 
-import com.groceryerp.db.DatabaseManager;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
-// @Entity
-// @Table(name="products")
 /**
- * JavaBean representing a single product carried by the grocery chain.
- * <p>
- * Follows the JavaBeans specification: public class, public no-argument
- * constructor, all fields private, and a public getter/setter for every
- * field. Implements {@link Serializable} so it can be passed between
- * components and packaged units.
+ * ProductBean — JPA entity mapped to the {@code products} table.
+ *
+ * Was: a plain JavaBean with a nested {@code DAO} static class that hand-wrote
+ * SQLite SQL ("INSERT OR REPLACE INTO products ..." / SELECT). The DAO is gone —
+ * persistence is now handled by {@link com.groceryerp.inventory.InventoryRepository}
+ * via the container-managed EntityManager. The annotations below ARE the table
+ * mapping (table name {@code products} taken from the original DAO SQL).
  */
+@Entity
+@Table(name = "products")
 public class ProductBean implements Serializable {
 
     /** Unique product code, e.g. "PROD_001". */
+    @Id
+    @Column(name = "productId")
     private String productId;
+
     /** Human-readable product name, e.g. "Whole Milk 1L". */
+    @Column(name = "name")
     private String name;
+
     /** Product category, e.g. "Dairy". */
+    @Column(name = "category")
     private String category;
+
     /** Shelf price in the store currency. */
+    @Column(name = "price")
     private double price;
+
     /** Expiry date as a plain string, e.g. "2026-08-01". */
+    @Column(name = "expiryDate")
     private String expiryDate;
 
-    /** Public no-argument constructor required by the JavaBeans spec. */
+    /** Barcode number (manually entered, e.g. EAN-13). */
+    @Column(name = "barcode")
+    private String barcode;
+
+    /** Primary supplier for this product (FK to suppliers.supplierId). */
+    @Column(name = "supplierId")
+    private String supplierId;
+
+    /** Purchase/unit cost from the supplier. Stored as Double (nullable) so existing
+     *  rows with NULL in the new column don't throw a primitive-assignment error. */
+    @Column(name = "unitCost")
+    private Double unitCost;
+
+    /** Public no-argument constructor required by the JavaBeans / JPA spec. */
     public ProductBean() {}
-    
+
     /** @return the unique product code. */
     public String getProductId() { return productId; }
 
@@ -66,66 +86,14 @@ public class ProductBean implements Serializable {
     /** @param expiryDate the expiry date string to set. */
     public void setExpiryDate(String expiryDate) { this.expiryDate = expiryDate; }
 
-    // ── Nested DAO ─────────────────────────────────────────────────
+    public String getBarcode() { return barcode; }
+    public void setBarcode(String barcode) { this.barcode = barcode; }
 
-    /** Handles all persistence operations for the products table. */
-    public static class DAO {
+    public String getSupplierId() { return supplierId; }
+    public void setSupplierId(String supplierId) { this.supplierId = supplierId; }
 
-        /** Inserts or replaces a ProductBean in the products table. */
-        public void save(ProductBean product) {
-            String sql = "INSERT OR REPLACE INTO products (productId,name,category,price,expiryDate) VALUES (?,?,?,?,?)";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, product.getProductId());
-                ps.setString(2, product.getName());
-                ps.setString(3, product.getCategory());
-                ps.setDouble(4, product.getPrice());
-                ps.setString(5, product.getExpiryDate());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                System.out.println("Failed to save product: " + e.getMessage());
-            }
-        }
-
-        /** Finds a ProductBean by ID, or returns null if not found. */
-        public ProductBean findById(String productId) {
-            String sql = "SELECT productId,name,category,price,expiryDate FROM products WHERE productId = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, productId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) { return mapRow(rs); }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to find product: " + e.getMessage());
-            }
-            return null;
-        }
-
-        /** Returns all products in the products table. */
-        public List<ProductBean> findAll() {
-            List<ProductBean> list = new ArrayList<>();
-            String sql = "SELECT productId,name,category,price,expiryDate FROM products";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql);
-                 ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) { list.add(mapRow(rs)); }
-            } catch (SQLException e) {
-                System.out.println("Failed to list products: " + e.getMessage());
-            }
-            return list;
-        }
-
-        private ProductBean mapRow(ResultSet rs) throws SQLException {
-            ProductBean p = new ProductBean();
-            p.setProductId(rs.getString("productId"));
-            p.setName(rs.getString("name"));
-            p.setCategory(rs.getString("category"));
-            p.setPrice(rs.getDouble("price"));
-            p.setExpiryDate(rs.getString("expiryDate"));
-            return p;
-        }
-    }
+    public double getUnitCost() { return unitCost != null ? unitCost : 0.0; }
+    public void setUnitCost(double unitCost) { this.unitCost = unitCost; }
 }
 
 // conflicts resolved by: Omar Khalifa

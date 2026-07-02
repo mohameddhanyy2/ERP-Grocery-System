@@ -7,97 +7,62 @@
     <groupId>com.groceryerp</groupId>
     <artifactId>grocery-erp</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <!-- WAR: deployed to a Jakarta EE 10 application server (WildFly 31+ / Payara 6+). -->
+    <packaging>war</packaging>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <exec.mainClass>com.groceryerp.integration.Main</exec.mainClass>
+        <jakartaee.version>10.0.0</jakartaee.version>
     </properties>
 
     <dependencies>
-        <!-- SQLite JDBC -->
+        <!--
+          Jakarta EE 10 full platform API — PROVIDED by the application server.
+          This single dependency supplies: EJB (@Stateless/@Stateful/@MessageDriven),
+          JPA (@Entity, EntityManager), CDI (@Inject), JMS, Servlet, and JAX-RS.
+          scope=provided because WildFly/Payara already ship the implementations.
+        -->
         <dependency>
-            <groupId>org.xerial</groupId>
-            <artifactId>sqlite-jdbc</artifactId>
-            <version>3.45.1.0</version>
-        </dependency>
-
-        <!-- Jetty embedded HTTP server -->
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-server</artifactId>
-            <version>11.0.20</version>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-servlet</artifactId>
-            <version>11.0.20</version>
-        </dependency>
-
-        <!-- Jakarta Servlet API (required by Jetty 11) -->
-        <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
-            <version>5.0.0</version>
+            <groupId>jakarta.platform</groupId>
+            <artifactId>jakarta.jakartaee-api</artifactId>
+            <version>${jakartaee.version}</version>
             <scope>provided</scope>
         </dependency>
 
-        <!-- JSON serialization -->
+        <!--
+          PostgreSQL JDBC driver (for Neon). Registered as a module/datasource in
+          the app server (WildFly), so this is provided-scope — not bundled in the
+          WAR. The Postgres dialect ships with Hibernate core, so no separate
+          community-dialects dependency is needed (unlike SQLite).
+        -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.3</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- JSON serialization for JAX-RS responses (JSON-B is provided; Jackson kept for parity). -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>2.17.0</version>
         </dependency>
-
-        <!-- SLF4J simple binding — silences "Failed to load StaticLoggerBinder" warning -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>1.7.36</version>
-        </dependency>
     </dependencies>
 
     <build>
+        <finalName>grocery-erp</finalName>
         <plugins>
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.0</version>
-                <configuration>
-                    <mainClass>com.groceryerp.integration.Main</mainClass>
-                </configuration>
-            </plugin>
-            <!-- Fat JAR for easy deployment -->
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.1</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals><goal>shade</goal></goals>
-                        <configuration>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.groceryerp.integration.Main</mainClass>
-                                </transformer>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                            </transformers>
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                        </configuration>
-                    </execution>
-                </executions>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.4.0</version>
+                <configuration>
+                    <!-- No web.xml needed: JAX-RS + Servlet 6 use annotations. -->
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
+                </configuration>
             </plugin>
         </plugins>
     </build>

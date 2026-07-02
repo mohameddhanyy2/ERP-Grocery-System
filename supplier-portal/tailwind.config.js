@@ -1,7 +1,23 @@
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        // Masri brand red (matches the main frontend)
+        brand: {
+          50:  '#fef2f3',
+          100: '#fde2e4',
+          200: '#fbccd0',
+          300: '#f7a3aa',
+          400: '#f06b76',
+          500: '#e23744',
+          600: '#c8102e',
+          700: '#a60d26',
+          800: '#891025',
+          900: '#741224',
+        },
+      },
+    },
   },
   plugins: [],
 }

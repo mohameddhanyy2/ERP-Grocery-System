@@ -1,31 +1,38 @@
 package com.groceryerp.pos.beans;
 
-import com.groceryerp.db.DatabaseManager;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 
-// @Entity
-// @Table(name="discounts")
 /**
- * DiscountBean — Entity Bean mapped to the {@code discounts} table.
- * One row per discount applied to a sale. Bean type: @Entity.
+ * DiscountBean — JPA entity mapped to the {@code discounts} table.
+ * One row per discount applied to a sale.
+ *
+ * The nested DAO is gone — persistence is handled by
+ * {@link com.groceryerp.pos.POSRepository}. Bean type: @Entity.
  */
+@Entity
+@Table(name = "discounts")
 public class DiscountBean implements Serializable {
 
-    // @Id
+    @Id
+    @Column(name = "discountId")
     /** Unique discount identifier, e.g. "DISC-1234567890". */
     private String discountId;
     /** ID of the sale this discount applies to. */
+    @Column(name = "saleId")
     private String saleId;
     /** Discount type: PERCENTAGE or FIXED. */
+    @Column(name = "discountType")
     private String discountType;
     /** Value of the discount (percentage 0-100 or fixed amount). */
+    @Column(name = "discountValue")
     private double discountValue;
     /** Human-readable description of the discount. */
+    @Column(name = "description")
     private String description;
 
     /** No-argument constructor */
@@ -45,51 +52,6 @@ public class DiscountBean implements Serializable {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
-
-    // ── Nested DAO ─────────────────────────────────────────────────
-
-    /** Handles all persistence operations for the discounts table. */
-    public static class DAO {
-
-        /** Persists a DiscountBean to the discounts table. */
-        public void save(DiscountBean discount) {
-            String sql = "INSERT OR REPLACE INTO discounts (discountId,saleId,discountType,discountValue,description) VALUES (?,?,?,?,?)";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, discount.getDiscountId());
-                ps.setString(2, discount.getSaleId());
-                ps.setString(3, discount.getDiscountType());
-                ps.setDouble(4, discount.getDiscountValue());
-                ps.setString(5, discount.getDescription());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                System.out.println("Failed to save discount: " + e.getMessage());
-            }
-        }
-
-        /** Finds a DiscountBean by sale ID, or returns null if not found. */
-        public DiscountBean findBySaleId(String saleId) {
-            String sql = "SELECT * FROM discounts WHERE saleId = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, saleId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        DiscountBean d = new DiscountBean();
-                        d.setDiscountId(rs.getString("discountId"));
-                        d.setSaleId(rs.getString("saleId"));
-                        d.setDiscountType(rs.getString("discountType"));
-                        d.setDiscountValue(rs.getDouble("discountValue"));
-                        d.setDescription(rs.getString("description"));
-                        return d;
-                    }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to find discount: " + e.getMessage());
-            }
-            return null;
-        }
-    }
 }
 
 // reviewed by: Omar Khalifa

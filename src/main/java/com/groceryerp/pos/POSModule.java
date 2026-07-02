@@ -1,11 +1,8 @@
 package com.groceryerp.pos;
 
-// @Stateless
-// Chosen because every method receives all data it needs through parameters,
-// reads/writes through DAOs, and returns a result immediately. No business state
-// accumulates between calls. Safe to share across callers without conflict.
-
+import com.groceryerp.customer.CustomerRepository;
 import com.groceryerp.customer.beans.PurchaseHistoryBean;
+import com.groceryerp.finance.FinanceRepository;
 import com.groceryerp.finance.beans.RevenueBean;
 import com.groceryerp.interfaces.ICustomerData;
 import com.groceryerp.interfaces.ILoyaltyService;
@@ -13,64 +10,74 @@ import com.groceryerp.interfaces.IReceiptService;
 import com.groceryerp.interfaces.ISalesData;
 import com.groceryerp.interfaces.IStoreInventory;
 import com.groceryerp.inventory.CentralInventoryBean;
+import com.groceryerp.inventory.InventoryRepository;
 import com.groceryerp.inventory.beans.*;
 import com.groceryerp.pos.beans.DiscountBean;
 import com.groceryerp.pos.beans.PaymentBean;
 import com.groceryerp.pos.beans.ReceiptBean;
 import com.groceryerp.pos.beans.SaleBean;
 import com.groceryerp.pos.beans.SaleItemBean;
+import jakarta.ejb.EJB;
+import jakarta.ejb.LocalBean;
+import jakarta.ejb.Stateless;
+import jakarta.inject.Inject;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * POSModule — Stateless Session Bean for sales processing, discounts, payments, and receipts.
+ * POSModule — now a real @Stateless session bean (previously a plain object
+ * manually instantiated and wired in Main.java).
  *
- * Every method is self-contained: it receives its inputs, reads/writes through DAOs,
- * and returns a result. No sale data is stored in memory between calls.
+ * Every method is self-contained: it receives its inputs, reads/writes through the
+ * injected {@link POSRepository}, and returns a result. No sale data is stored in
+ * memory between calls — safe to share across callers.
  *
  * PROVIDED interfaces: ISalesData, IReceiptService
- * REQUIRED interfaces: IStoreInventory, ICustomerData, ILoyaltyService, CentralInventoryBean
+ * REQUIRED interfaces: IStoreInventory, ICustomerData, ILoyaltyService — injected
+ *                      by CDI via @Inject instead of the old setter calls in Main.
+ *                      CentralInventoryBean is likewise container-injected.
  *
- * Bean type: @Stateless — no conversational state, all data flows through parameters and DAOs.
+ * Persistence for the five POS beans is delegated to the injected @Stateless
+ * {@link POSRepository} (the old SaleBean.DAO / ReceiptBean.DAO / PaymentBean.DAO /
+ * DiscountBean.DAO fields).
+ *
+ * Bean type: @Stateless — no conversational state, all data flows through
+ * parameters and the repository.
  */
+@Stateless
+@LocalBean
 public class POSModule implements ISalesData, IReceiptService {
 
-    // ── Injected required interfaces ──
+    // ── Injected required interfaces (replaces the old setXxx() setters) ──
+    @Inject
     private IStoreInventory storeInventory;
+    @Inject
     private ICustomerData customerData;
+    @Inject
     private ILoyaltyService loyaltyService;
+    @Inject
     private CentralInventoryBean centralInventory;
 
-    // ── DAO fields (infrastructure) ───────────
-    private final SaleBean.DAO saleDao       = new SaleBean.DAO();
-    private final ReceiptBean.DAO receiptDao = new ReceiptBean.DAO();
-    private final PaymentBean.DAO paymentDao = new PaymentBean.DAO();
-    private final DiscountBean.DAO discountDao = new DiscountBean.DAO();
+    /** Container-injected persistence service (replaces the 4 nested POS DAO fields). */
+    @EJB
+    private POSRepository repository;
+
+    /**
+     * Cross-module persistence services. The original code reached into other
+     * modules' beans via {@code new ProductBean.DAO()}, {@code new RevenueBean.DAO()}
+     * and {@code new PurchaseHistoryBean.DAO()}. Those nested DAOs were removed when
+     * those modules migrated to JPA, so the same operations now go through each
+     * module's @Stateless repository, injected here by the container.
+     */
+    @EJB
+    private InventoryRepository inventoryRepository;
+    @EJB
+    private FinanceRepository financeRepository;
+    @EJB
+    private CustomerRepository customerRepository;
 
     public POSModule() {}
-
-    // ── Setters ───────────────────────────────────────────────
-
-    /** store inventory dependency. */
-    public void setStoreInventory(IStoreInventory storeInventory) {
-        this.storeInventory = storeInventory;
-    }
-
-    /** customer data dependency. */
-    public void setCustomerData(ICustomerData customerData) {
-        this.customerData = customerData;
-    }
-
-    /** loyalty service dependency. */
-    public void setLoyaltyService(ILoyaltyService loyaltyService) {
-        this.loyaltyService = loyaltyService;
-    }
-
-    /** central inventory dependency — used to resolve per-store stock for multi-item sales. */
-    public void setCentralInventory(CentralInventoryBean centralInventory) {
-        this.centralInventory = centralInventory;
-    }
 
     // ── Core POS operations ───────────────────────────────────────
 
@@ -93,18 +100,17 @@ public class POSModule implements ISalesData, IReceiptService {
         }
         if (store == null) throw new IllegalStateException("Unknown store: " + storeId);
 
-        ProductBean.DAO productDao = new ProductBean.DAO();
         String saleId = "SALE-" + System.currentTimeMillis();
 
         double subtotal = 0;
         for (SaleItemBean item : items) {
             int available = store.checkStock(item.getProductId());
             if (available < item.getQuantity()) {
-                ProductBean p = productDao.findById(item.getProductId());
+                ProductBean p = inventoryRepository.findProductById(item.getProductId());
                 String name = p != null ? p.getName() : item.getProductId();
                 throw new IllegalStateException("Insufficient stock for \"" + name + "\": need " + item.getQuantity() + ", have " + available);
             }
-            ProductBean p = productDao.findById(item.getProductId());
+            ProductBean p = inventoryRepository.findProductById(item.getProductId());
             double unitPrice = p != null ? p.getPrice() : 0;
             item.setItemId("ITEM-" + System.currentTimeMillis() + "-" + item.getProductId());
             item.setSaleId(saleId);
@@ -138,9 +144,9 @@ public class POSModule implements ISalesData, IReceiptService {
         sale.setDiscountRate(0.0);
         sale.setItems(items);
 
-        saleDao.save(sale);
+        repository.saveSale(sale);
         for (SaleItemBean item : items) {
-            saleDao.saveItem(item);
+            repository.saveItem(item);
         }
 
         // Auto-process payment and receipt
@@ -149,13 +155,14 @@ public class POSModule implements ISalesData, IReceiptService {
         String today = LocalDateTime.now().toLocalDate().toString();
         String period = today.substring(0, 7); // YYYY-MM
 
-        // Record revenue for finance
+        // Record revenue for finance — use amountPaid (the actual final amount after discounts)
         RevenueBean revenue = new RevenueBean();
         revenue.setRevenueId("REV-" + System.currentTimeMillis());
         revenue.setStoreId(storeId);
         revenue.setPeriod(period);
-        revenue.setGrossRevenue(grandTotal);
-        new RevenueBean.DAO().save(revenue);
+        revenue.setGrossRevenue(amountPaid);
+        revenue.setSaleId(saleId);
+        financeRepository.saveRevenue(revenue);
 
         // Record purchase history and award loyalty points (skip GUEST)
         if (!"GUEST".equals(customerId)) {
@@ -165,7 +172,7 @@ public class POSModule implements ISalesData, IReceiptService {
             history.setSaleId(saleId);
             history.setDate(today);
             history.setAmount(grandTotal);
-            new PurchaseHistoryBean.DAO().save(history);
+            customerRepository.savePurchaseHistory(history);
 
             if (loyaltyService != null) {
                 loyaltyService.addLoyaltyPoints(customerId, grandTotal);
@@ -196,7 +203,7 @@ public class POSModule implements ISalesData, IReceiptService {
         }
 
         sale.setTotalAmount(Math.round(discounted * 100.0) / 100.0);
-        saleDao.save(sale);
+        repository.saveSale(sale);
 
         DiscountBean discount = new DiscountBean();
         discount.setDiscountId("DISC-" + System.currentTimeMillis());
@@ -204,7 +211,7 @@ public class POSModule implements ISalesData, IReceiptService {
         discount.setDiscountType(discountType);
         discount.setDiscountValue(discountValue);
         discount.setDescription(discountType + " discount of " + discountValue + " applied");
-        discountDao.save(discount);
+        repository.saveDiscount(discount);
         return discount;
     }
 
@@ -232,7 +239,7 @@ public class POSModule implements ISalesData, IReceiptService {
         payment.setAmountPaid(amountPaid);
         payment.setChange(Math.round((amountPaid - grandTotal) * 100.0) / 100.0);
         payment.setProcessedAt(LocalDateTime.now().toString());
-        paymentDao.save(payment);
+        repository.savePayment(payment);
 
         ReceiptBean receipt = new ReceiptBean();
         receipt.setReceiptId("RECEIPT-" + System.currentTimeMillis());
@@ -242,7 +249,7 @@ public class POSModule implements ISalesData, IReceiptService {
         receipt.setTaxAmount(taxAmount);
         receipt.setGrandTotal(grandTotal);
         receipt.setIssuedAt(LocalDateTime.now().toString());
-        receiptDao.save(receipt);
+        repository.saveReceipt(receipt);
 
         return receipt;
     }
@@ -252,19 +259,19 @@ public class POSModule implements ISalesData, IReceiptService {
     /** Returns the total revenue for a given store on a given date (date prefix match). */
     @Override
     public double getTotalRevenueBySale(String storeId, String date) {
-        return saleDao.sumRevenueByStoreAndDate(storeId, date);
+        return repository.sumRevenueByStoreAndDate(storeId, date);
     }
 
     /** Returns the number of transactions on a given date (date prefix match). */
     @Override
     public int getTransactionCount(String date) {
-        return saleDao.countByDate(date);
+        return repository.countByDate(date);
     }
 
     /** Returns the total amount spent by a customer across all their sales. */
     @Override
     public double getTotalSpendByCustomer(String customerId) {
-        return saleDao.sumRevenueByCustomer(customerId);
+        return repository.sumRevenueByCustomer(customerId);
     }
 
     // ── IReceiptService (provided) ────────────────────────────────
@@ -272,11 +279,11 @@ public class POSModule implements ISalesData, IReceiptService {
     /** Generates a formatted receipt string for a given sale ID, including all line items. */
     @Override
     public String generateReceipt(String saleId) {
-        SaleBean sale = saleDao.findById(saleId);
+        SaleBean sale = repository.findSaleById(saleId);
         if (sale == null) return "RECEIPT NOT FOUND for sale: " + saleId;
 
         String customerName = customerData.getCustomerName(sale.getCustomerId());
-        String storeName    = com.groceryerp.db.DatabaseManager.loadStores().stream()
+        String storeName    = inventoryRepository.loadStores().stream()
                 .filter(m -> sale.getStoreId().equals(m.get("storeId")))
                 .map(m -> m.get("storeName"))
                 .findFirst()
@@ -286,8 +293,7 @@ public class POSModule implements ISalesData, IReceiptService {
         double grandTotal   = Math.round((subtotal + taxAmount) * 100.0) / 100.0;
 
         // Fetch line items
-        java.util.List<SaleItemBean> items = saleDao.findItemsBySaleId(saleId);
-        ProductBean.DAO productDao = new ProductBean.DAO();
+        java.util.List<SaleItemBean> items = repository.findItemsBySaleId(saleId);
 
         StringBuilder sb = new StringBuilder();
         sb.append("========================================\n");
@@ -302,7 +308,7 @@ public class POSModule implements ISalesData, IReceiptService {
         sb.append(String.format("%-22s %4s %7s %9s%n", "Item", "Qty", "Unit", "Total"));
         sb.append("----------------------------------------\n");
         for (SaleItemBean item : items) {
-            ProductBean p = productDao.findById(item.getProductId());
+            ProductBean p = inventoryRepository.findProductById(item.getProductId());
             String name = p != null ? p.getName() : item.getProductId();
             if (name.length() > 22) name = name.substring(0, 19) + "...";
             sb.append(String.format("%-22s %4d %7.2f %9.2f%n",

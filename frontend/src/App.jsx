@@ -12,7 +12,7 @@ import Reporting  from './pages/Reporting';
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex min-h-screen bg-gray-950">
+      <div className="flex min-h-screen bg-gray-50">
         <Sidebar />
         <main className="flex-1 ml-60 p-8 overflow-y-auto">
           <Routes>

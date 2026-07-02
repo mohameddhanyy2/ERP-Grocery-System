@@ -1,6 +1,9 @@
 package com.groceryerp.interfaces;
+
+import jakarta.ejb.Local;
 import java.util.List;
 /** Provided by CentralInventoryBean (composite). Required by: ReportingModule. */
+@Local
 public interface ITotalStock {
     int getTotalStock(String productId);
     List<String> getStoresWithLowStock();

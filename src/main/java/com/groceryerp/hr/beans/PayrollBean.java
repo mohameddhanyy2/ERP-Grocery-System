@@ -1,27 +1,42 @@
 package com.groceryerp.hr.beans;
-import com.groceryerp.db.DatabaseManager;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 
-// @Entity
-// @Table(name="payroll")
-/*
- * PayrollBean — Entity Bean mapped to the {@code payroll} table.
- * One row per payroll record per employee per period. Bean type: @Entity.
+/**
+ * PayrollBean — JPA entity mapped to the {@code payroll} table.
+ * One row per payroll record per employee per period.
+ *
+ * Was: a plain JavaBean with a nested {@code DAO} static class that hand-wrote
+ * SQLite SQL (INSERT OR REPLACE / SELECT / SUM). The DAO is gone — persistence
+ * is now handled by {@link com.groceryerp.hr.HRRepository} via the
+ * container-managed EntityManager. The annotations below ARE the table mapping.
  */
-/** JavaBean representing payroll in the HR module. */
+@Entity
+@Table(name = "payroll")
 public class PayrollBean implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @Column(name = "payrollId")
     private String payrollId;
+
+    @Column(name = "employeeId")
     private String employeeId;
+
+    @Column(name = "period")
     private String period;
+
+    @Column(name = "grossPay")
     private double grossPay;
+
+    @Column(name = "deductions")
     private double deductions;
+
+    @Column(name = "netPay")
     private double netPay;
 
     public PayrollBean() {}
@@ -67,69 +82,4 @@ public class PayrollBean implements Serializable {
     public void setNetPay(double netPay) {
         this.netPay = netPay;
     }
-
-    // ── Nested DAO ─────────────────────────────────────────────────
-
-    /** Handles all persistence operations for the payroll table. */
-    public static class DAO {
-
-        /** Persists a PayrollBean to the payroll table. */
-        public void save(PayrollBean payroll) {
-            String sql = "INSERT OR REPLACE INTO payroll (payrollId,employeeId,period,grossPay,deductions,netPay) VALUES (?,?,?,?,?,?)";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, payroll.getPayrollId());
-                ps.setString(2, payroll.getEmployeeId());
-                ps.setString(3, payroll.getPeriod());
-                ps.setDouble(4, payroll.getGrossPay());
-                ps.setDouble(5, payroll.getDeductions());
-                ps.setDouble(6, payroll.getNetPay());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                System.out.println("Failed to save payroll: " + e.getMessage());
-            }
-        }
-
-        /** Finds a PayrollBean by employee ID and period, or returns null if not found. */
-        public PayrollBean findByEmployeeAndPeriod(String employeeId, String period) {
-            String sql = "SELECT payrollId,employeeId,period,grossPay,deductions,netPay FROM payroll WHERE employeeId = ? AND period = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, employeeId);
-                ps.setString(2, period);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        PayrollBean p = new PayrollBean();
-                        p.setPayrollId(rs.getString("payrollId"));
-                        p.setEmployeeId(rs.getString("employeeId"));
-                        p.setPeriod(rs.getString("period"));
-                        p.setGrossPay(rs.getDouble("grossPay"));
-                        p.setDeductions(rs.getDouble("deductions"));
-                        p.setNetPay(rs.getDouble("netPay"));
-                        return p;
-                    }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to find payroll: " + e.getMessage());
-            }
-            return null;
-        }
-
-        /** Returns the sum of netPay for all payroll records in a given period. */
-        public double sumCostByPeriod(String period) {
-            String sql = "SELECT SUM(netPay) FROM payroll WHERE period = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, period);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) { return rs.getDouble(1); }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to sum payroll cost: " + e.getMessage());
-            }
-            return 0.0;
-        }
-    }
 }
-
-// conflicts resolved by: Omar Khalifa

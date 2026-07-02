@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api/client';
+import { api, subscribePosEvents } from '../api/client';
 import { useStores } from '../hooks/useStores';
 import PageHeader from '../components/PageHeader';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -12,6 +12,7 @@ export default function POS() {
   const stores = useStores();
   const [sales, setSales]         = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [suppliers, setSuppliers] = useState({}); // productId -> supplier name(s)
   const [loading, setLoading]     = useState(true);
   const [showSale, setShowSale]   = useState(false);
   const [receipt, setReceipt]     = useState('');
@@ -44,12 +45,17 @@ export default function POS() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([api.sales(), api.customers()])
-      .then(([s, c]) => { setSales(s); setCustomers(c); })
+    Promise.all([api.sales(), api.customers(), api.productSuppliers()])
+      .then(([s, c, sup]) => { setSales(s); setCustomers(c); setSuppliers(sup); })
       .catch(console.error)
       .finally(() => setLoading(false));
   };
   useEffect(load, []);
+
+  useEffect(() => {
+    const unsub = subscribePosEvents(() => load());
+    return unsub;
+  }, []);
 
   // Reload store products when store changes (while modal is open)
   const loadStoreProducts = (sid) => {
@@ -166,15 +172,15 @@ export default function POS() {
         }
       />
 
-      {msg && <div className="mb-4 p-3 bg-brand-900/30 border border-brand-700 rounded-lg text-sm text-brand-300 whitespace-pre-wrap">{msg}</div>}
+      {msg && <div className="mb-4 p-3 bg-brand-100 border border-brand-200 rounded-lg text-sm text-brand-700 whitespace-pre-wrap">{msg}</div>}
 
       {receipt && (
-        <div className="mb-4 p-4 bg-gray-900 border border-gray-700 rounded-lg">
+        <div className="mb-4 p-4 bg-white border border-gray-300 rounded-lg">
           <div className="flex justify-between items-center mb-2">
-            <p className="text-sm font-semibold text-white flex items-center gap-2"><Receipt size={14} /> Receipt</p>
-            <button className="text-xs text-gray-500 hover:text-gray-300" onClick={() => setReceipt('')}>✕ Close</button>
+            <p className="text-sm font-semibold text-gray-900 flex items-center gap-2"><Receipt size={14} /> Receipt</p>
+            <button className="text-xs text-gray-500 hover:text-gray-700" onClick={() => setReceipt('')}>✕ Close</button>
           </div>
-          <pre className="text-xs text-gray-300 font-mono leading-relaxed">{receipt}</pre>
+          <pre className="text-xs text-gray-700 font-mono leading-relaxed">{receipt}</pre>
         </div>
       )}
 
@@ -182,7 +188,7 @@ export default function POS() {
         <div className="card p-0 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-800 text-left">
+              <tr className="border-b border-gray-200 text-left">
                 {['Sale ID', 'Store', 'Customer', 'Total', 'Payment', 'Time', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-xs text-gray-500 font-medium uppercase">{h}</th>
                 ))}
@@ -192,9 +198,9 @@ export default function POS() {
               {sales.map((s, i) => (
                 <tr key={i} className="table-row">
                   <td className="px-4 py-3 font-mono text-xs text-gray-400">{s.saleId?.slice(0, 20)}</td>
-                  <td className="px-4 py-3 text-gray-300">{stores.find(st => st.id === s.storeId)?.name || s.storeId}</td>
+                  <td className="px-4 py-3 text-gray-700">{stores.find(st => st.id === s.storeId)?.name || s.storeId}</td>
                   <td className="px-4 py-3 text-gray-400">{s.customerName}</td>
-                  <td className="px-4 py-3 font-semibold text-emerald-400">{fmt(s.totalAmount)}</td>
+                  <td className="px-4 py-3 font-semibold text-emerald-600">{fmt(s.totalAmount)}</td>
                   <td className="px-4 py-3"><span className={paymentColor(s.paymentMethod)}>{s.paymentMethod}</span></td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{s.timestamp?.slice(0, 19)}</td>
                   <td className="px-4 py-3">
@@ -233,14 +239,14 @@ export default function POS() {
               {loadingProducts ? (
                 <p className="text-xs text-gray-500">Loading products…</p>
               ) : storeProducts.length === 0 ? (
-                <p className="text-xs text-amber-400">No products in stock at this store. Add inventory first.</p>
+                <p className="text-xs text-amber-600">No products in stock at this store. Add inventory first.</p>
               ) : (
                 <div className="flex gap-2">
                   <select className="input flex-1" value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)}>
                     <option value="">Select a product…</option>
                     {availableToAdd.map(p => (
                       <option key={p.productId} value={p.productId}>
-                        {p.name} — {fmt(p.price)} ({p.quantity} in stock)
+                        {p.name}{suppliers[p.productId] ? ` (${suppliers[p.productId]})` : ''} — {fmt(p.price)} ({p.quantity} in stock)
                       </option>
                     ))}
                   </select>
@@ -255,10 +261,10 @@ export default function POS() {
             {cart.length > 0 && (
               <div>
                 <label className="text-xs text-gray-400 mb-1 block">Cart</label>
-                <div className="border border-gray-700 rounded-lg overflow-hidden">
+                <div className="border border-gray-300 rounded-lg overflow-hidden">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-gray-700 bg-gray-800/50">
+                      <tr className="border-b border-gray-300 bg-gray-50">
                         <th className="px-3 py-2 text-left text-gray-500">Item</th>
                         <th className="px-3 py-2 text-right text-gray-500">Unit</th>
                         <th className="px-3 py-2 text-center text-gray-500">Qty</th>
@@ -268,8 +274,13 @@ export default function POS() {
                     </thead>
                     <tbody>
                       {cart.map(item => (
-                        <tr key={item.productId} className="border-b border-gray-800">
-                          <td className="px-3 py-2 text-white font-medium">{item.name}</td>
+                        <tr key={item.productId} className="border-b border-gray-200">
+                          <td className="px-3 py-2 text-gray-900 font-medium">
+                            {item.name}
+                            {suppliers[item.productId] && (
+                              <span className="block text-[10px] text-gray-500 font-normal">{suppliers[item.productId]}</span>
+                            )}
+                          </td>
                           <td className="px-3 py-2 text-right text-gray-400">{fmt(item.unitPrice)}</td>
                           <td className="px-3 py-2 text-center">
                             <input
@@ -280,12 +291,12 @@ export default function POS() {
                             />
                             <span className="text-gray-600 ml-1">/{item.stock}</span>
                           </td>
-                          <td className="px-3 py-2 text-right font-semibold text-emerald-400">
+                          <td className="px-3 py-2 text-right font-semibold text-emerald-600">
                             {fmt(item.unitPrice * item.quantity)}
                           </td>
                           <td className="px-3 py-2 text-center">
                             <button type="button" onClick={() => removeFromCart(item.productId)}
-                              className="text-gray-500 hover:text-red-400 transition-colors">
+                              className="text-gray-500 hover:text-red-600 transition-colors">
                               <Trash2 size={12} />
                             </button>
                           </td>
@@ -294,7 +305,7 @@ export default function POS() {
                     </tbody>
                   </table>
                   {/* Totals */}
-                  <div className="bg-gray-800/30 px-3 py-2 space-y-1">
+                  <div className="bg-gray-50 px-3 py-2 space-y-1">
                     <div className="flex justify-between text-xs text-gray-400">
                       <span>Subtotal</span><span>{fmt(subtotal)}</span>
                     </div>
@@ -306,8 +317,8 @@ export default function POS() {
                     <div className="flex justify-between text-xs text-gray-400">
                       <span>Tax (14%)</span><span>{fmt(tax)}</span>
                     </div>
-                    <div className="flex justify-between text-sm font-bold text-white border-t border-gray-700 pt-1 mt-1">
-                      <span>Grand Total</span><span className="text-emerald-400">{fmt(grandTotal)}</span>
+                    <div className="flex justify-between text-sm font-bold text-gray-900 border-t border-gray-300 pt-1 mt-1">
+                      <span>Grand Total</span><span className="text-emerald-600">{fmt(grandTotal)}</span>
                     </div>
                   </div>
                 </div>

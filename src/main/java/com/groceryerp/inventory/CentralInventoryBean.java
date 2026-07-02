@@ -1,44 +1,80 @@
 package com.groceryerp.inventory;
 
-// @Stateful
-// Chosen because the store registry (List<IStoreInventory> stores) is conversational
-// state: it is built up via repeated addStore() calls before any operations run,
-// and every subsequent getTotalStock() / getStoresWithLowStock() call depends on
-// that accumulated registry. The registry must persist across calls within the session.
-
 import com.groceryerp.interfaces.IStockAlerts;
 import com.groceryerp.interfaces.IStoreInventory;
 import com.groceryerp.interfaces.ITotalStock;
-import com.groceryerp.inventory.beans.StockAlertBean;
+import jakarta.annotation.PostConstruct;
+import jakarta.ejb.EJB;
+import jakarta.ejb.LocalBean;
+import jakarta.ejb.Remove;
+import jakarta.ejb.Stateful;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /*
  * Composite component of the inventory module — aggregates every
  * {@link StoreInventoryBean} branch into a single chain-wide view.
  * <p>
+ * Now a real @Stateful session bean (previously a plain object). Chosen because
+ * the store registry ({@code List<IStoreInventory> stores}) is conversational
+ * state: it is built up via repeated {@link #addStore(IStoreInventory)} calls
+ * before any operations run, and every subsequent getTotalStock() /
+ * getStoresWithLowStock() call depends on that accumulated registry. The
+ * registry must persist across calls within the session — so this is @Stateful,
+ * NOT a JPA entity.
+ * <p>
  * <b>PROVIDED interfaces:</b> {@link ITotalStock}, {@link IStockAlerts}<br>
- * <b>REQUIRED interfaces:</b> none — this is a foundation component.
- * <p>
- * <b>Composite Structure:</b> the bean holds a {@code List<IStoreInventory>}
- * and exposes operations over the whole collection. Because it works through
- * the {@link IStoreInventory} interface, a caller cannot tell whether it is
- * talking to one store or to the entire chain.
- * <p>
- * <b>Inversion of Control:</b> stores are <i>injected</i> from outside via
- * {@link #addStore(IStoreInventory)} — the composite never creates a store
- * with {@code new}.
+ * <b>REQUIRED:</b> the @Stateless {@link InventoryRepository}, injected by the
+ * container (replaces the old {@code new StockAlertBean.DAO()} usage).
  */
+@Stateful
+@LocalBean  // expose the concrete no-interface view so @EJB CentralInventoryBean can bind
+            // (resources call addStore()/getStore(), which are on the class, not on
+            // ITotalStock/IStockAlerts). Without this, EJB resolves the bean only by
+            // its interfaces and the by-class @EJB injection fails (WFLYEJB0406).
 public class CentralInventoryBean implements ITotalStock, IStockAlerts, Serializable {
 
     /** Child stores held by interface, not by concrete class (Composite). */
     private List<IStoreInventory> stores;
 
-    /** Public no-argument constructor required by the JavaBeans spec. */
+    /** Container-injected persistence service (replaces the StockAlertBean.DAO). */
+    @EJB
+    private InventoryRepository repository;
+
+    /**
+     * CDI provider for store branches. Using Instance (not {@code new}) means each
+     * StoreInventoryBean we obtain is container-managed, so its @Inject
+     * InventoryRepository / StockAlertProducer are populated — a plain
+     * {@code new StoreInventoryBean()} would leave those null.
+     */
+    @Inject
+    private Instance<StoreInventoryBean> storeProvider;
+
+    /** Public no-argument constructor required by the JavaBeans / EJB spec. */
     public CentralInventoryBean() {
         this.stores = new ArrayList<>();
+    }
+
+    /**
+     * Load every store that already exists in the DB into the composite registry.
+     * The original Main.java did this wiring at startup by calling addStore() for
+     * each branch; that bootstrap was removed in the EJB migration, leaving the
+     * registry empty so processSale() failed with "Unknown store". This rebuilds it
+     * lazily when the @Stateful bean is created.
+     */
+    @PostConstruct
+    public void loadStoresFromDb() {
+        for (Map<String, String> row : repository.loadStores()) {
+            StoreInventoryBean store = storeProvider.get();
+            store.setStoreId(row.get("storeId"));
+            store.setStoreName(row.get("storeName"));
+            stores.add(store);
+        }
     }
 
     // ── IoC: stores injected, not created ──────────────────────────
@@ -53,14 +89,29 @@ public class CentralInventoryBean implements ITotalStock, IStockAlerts, Serializ
     }
 
     /**
-     * Finds an injected store by its id.
+     * Finds a store by id. Checks the in-memory registry first; if absent (this
+     * @Stateful instance was created before the store existed, or the store was
+     * added elsewhere), it falls back to the DB and lazily registers a
+     * container-managed StoreInventoryBean. Returns null only if the store truly
+     * does not exist. This keeps every caller (POS, restock, delivery, transfer)
+     * working regardless of when this bean instance was constructed.
      *
      * @param storeId the branch code to look for.
-     * @return the matching store, or {@code null} if none matches.
+     * @return the matching store, or {@code null} if none exists.
      */
     public IStoreInventory getStore(String storeId) {
         for (IStoreInventory store : stores) {
             if (store.getStoreId().equals(storeId)) { return store; }
+        }
+        // Not in the in-memory registry — check the DB and register it if present.
+        for (Map<String, String> row : repository.loadStores()) {
+            if (row.get("storeId").equals(storeId)) {
+                StoreInventoryBean store = storeProvider.get();
+                store.setStoreId(row.get("storeId"));
+                store.setStoreName(row.get("storeName"));
+                stores.add(store);
+                return store;
+            }
         }
         return null;
     }
@@ -155,12 +206,13 @@ public class CentralInventoryBean implements ITotalStock, IStockAlerts, Serializ
         if (store != null) {
             store.getLowStockAlerts().removeIf(alert -> alert.contains(productId));
         }
-        new StockAlertBean.DAO().deleteByProductAndStore(productId, storeId);
+        // Was: new StockAlertBean.DAO().deleteByProductAndStore(productId, storeId);
+        repository.deleteByProductAndStore(productId, storeId);
     }
 
     // ── @Remove — session end method ─────────────────────────────
 
-    // @Remove
+    @Remove
     /** Clears the store registry. Call when this central inventory session ends. */
     public void clearStores() {
         stores.clear();

@@ -1,45 +1,62 @@
 package com.groceryerp.inventory;
 
-// @MessageDriven
-// Chosen because stock alerts are asynchronous events: StoreInventoryBean fires them
-// after a stock update, and this bean reacts without the caller waiting for a result.
-// It holds no conversational state — each onMessage() call is self-contained.
-
 import com.groceryerp.api.AlertBroadcaster;
 import com.groceryerp.inventory.beans.StockAlertBean;
+import jakarta.ejb.ActivationConfigProperty;
+import jakarta.ejb.EJB;
+import jakarta.ejb.MessageDriven;
+import jakarta.inject.Inject;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
+import jakarta.jms.MessageListener;
+import jakarta.jms.ObjectMessage;
 
 /**
- * StockAlertMDB — Message-Driven Bean for handling low-stock alert messages.
+ * StockAlertMDB — now a REAL Message-Driven Bean (previously a plain object with
+ * an onMessage(String,Object) method that was simply called like any other
+ * method, holding none of the asynchronous semantics it claimed).
  *
- * Triggered asynchronously when StoreInventoryBean.updateStock() detects that
- * a product quantity has dropped below the low-stock threshold. Persists the
- * alert so that suppliers can see it via the portal and initiate a quote.
+ * It listens on the StockAlert JMS queue. When {@link StockAlertProducer} sends a
+ * low-stock event, the container delivers it here on a separate thread, the bean
+ * persists the alert via the injected {@link InventoryRepository}, then pushes an
+ * SSE notification through the {@link AlertBroadcaster}.
  *
- * Bean type: @MessageDriven — reacts to events, holds no conversational state,
- * never called directly by other modules.
+ * Flow: StoreInventoryBean.updateStock() detects low stock
+ *       -> StockAlertProducer.fireLowStock() sends JMS message
+ *       -> (async) this MDB.onMessage() persists + broadcasts.
  */
-public class StockAlertMDB {
+@MessageDriven(activationConfig = {
+    @ActivationConfigProperty(propertyName = "destinationType",
+                              propertyValue = "jakarta.jms.Queue"),
+    @ActivationConfigProperty(propertyName = "destinationLookup",
+                              propertyValue = "java:/jms/queue/StockAlert")
+})
+public class StockAlertMDB implements MessageListener {
 
-    private final StockAlertBean.DAO alertDao = new StockAlertBean.DAO();
+    @EJB
+    private InventoryRepository inventoryRepository;
 
-    public StockAlertMDB() {}
+    @Inject
+    private AlertBroadcaster alertBroadcaster;
 
-    /**
-     * Entry point for incoming stock alert messages.
-     *
-     * @param messageType expected value: "LOW_STOCK"
-     * @param payload     a StockAlertBean describing the product and store
-     */
-    public void onMessage(String messageType, Object payload) {
-        if ("LOW_STOCK".equals(messageType)) {
-            StockAlertBean alert = (StockAlertBean) payload;
-            alertDao.save(alert);
-            AlertBroadcaster.getInstance().broadcast(alert.getProductId());
-            System.out.println("[MDB] Low stock alert saved: product=" + alert.getProductId()
-                    + " store=" + alert.getStoreId()
-                    + " qty=" + alert.getCurrentQty()
-                    + " threshold=" + alert.getThreshold()
-                    + " — awaiting supplier quote");
+    @Override
+    public void onMessage(Message message) {
+        try {
+            if (message instanceof ObjectMessage objectMessage) {
+                Object body = objectMessage.getObject();
+                if (body instanceof StockAlertEvent event) {
+                    StockAlertBean alert = event.getAlert();
+                    inventoryRepository.saveAlert(alert);
+                    alertBroadcaster.broadcast(alert.getProductId());
+                    System.out.println("[MDB] Low stock alert saved: product=" + alert.getProductId()
+                            + " store=" + alert.getStoreId()
+                            + " qty=" + alert.getCurrentQty()
+                            + " threshold=" + alert.getThreshold()
+                            + " — awaiting supplier quote");
+                }
+            }
+        } catch (JMSException e) {
+            System.out.println("[MDB] Failed to process stock alert message: " + e.getMessage());
         }
     }
 }

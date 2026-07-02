@@ -1,0 +1,204 @@
+========================================
+  ERP GROCERY SYSTEM — FULL SETUP GUIDE
+========================================
+
+PREREQUISITES
+-------------
+Install all of these before starting:
+
+  - Java JDK 21       → https://adoptium.net
+  - Apache Maven 3.9+ → https://maven.apache.org/download.cgi
+  - Node.js 18+       → https://nodejs.org
+  - WildFly 40.0.1    → https://www.wildfly.org/downloads/
+
+Verify by running in a terminal:
+  java -version    (must say 21)
+  mvn -version     (must say 3.9.x)
+  node -version    (must say 18 or higher)
+
+
+STEP 1 — GET THE PROJECT
+-------------------------
+  git clone <repo-url>
+  cd ERP-Grocery-System
+
+
+STEP 2 — INSTALL WILDFLY
+-------------------------
+1. Download WildFly 40.0.1.Final from https://www.wildfly.org/downloads/
+2. Extract it somewhere easy, e.g.:
+     Mac/Linux : ~/wildfly
+     Windows   : C:\wildfly
+   This folder is referred to as WILDFLY_HOME below.
+
+
+STEP 3 — ADD THE POSTGRESQL JDBC DRIVER
+-----------------------------------------
+1. Download postgresql-42.7.3.jar from https://jdbc.postgresql.org/download/
+
+2. Create this folder structure inside WildFly:
+     Mac/Linux : ~/wildfly/modules/org/postgresql/main/
+     Windows   : C:\wildfly\modules\org\postgresql\main\
+
+3. Copy postgresql-42.7.3.jar into that folder.
+
+4. In that same folder, create a new file called module.xml
+   with the following content (copy exactly):
+
+   <?xml version="1.0" encoding="UTF-8"?>
+   <module xmlns="urn:jboss:module:1.1" name="org.postgresql">
+       <resources>
+           <resource-root path="postgresql-42.7.3.jar"/>
+       </resources>
+       <dependencies>
+           <module name="javax.api"/>
+           <module name="javax.transaction.api"/>
+       </dependencies>
+   </module>
+
+
+STEP 4 — CONFIGURE THE DATASOURCE IN WILDFLY
+----------------------------------------------
+Open this file in any text editor:
+  WILDFLY_HOME/standalone/configuration/standalone.xml
+
+--- 4a: Register the PostgreSQL driver ---
+Find the <drivers> section and add this inside it:
+
+   <driver name="postgresql" module="org.postgresql">
+       <driver-class>org.postgresql.Driver</driver-class>
+       <xa-datasource-class>org.postgresql.xa.PGXADataSource</xa-datasource-class>
+   </driver>
+
+--- 4b: Add the datasource ---
+Find the <datasources> section and add this inside it.
+Replace the placeholders with the credentials Omar gives you:
+
+   <datasource jndi-name="java:/GroceryErpDS" pool-name="GroceryErpDS" enabled="true">
+       <connection-url>jdbc:postgresql://NEON_HOST/NEON_DATABASE?sslmode=require</connection-url>
+       <driver>postgresql</driver>
+       <security>
+           <user-name>YOUR_NEON_USERNAME</user-name>
+           <password>YOUR_NEON_PASSWORD</password>
+       </security>
+       <validation>
+           <valid-connection-checker class-name="org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker"/>
+           <background-validation>true</background-validation>
+       </validation>
+   </datasource>
+
+NOTE: The credentials are NOT in the repo for security reasons.
+      Ask Omar for: NEON_HOST, NEON_DATABASE, USERNAME, PASSWORD.
+      Only put them in standalone.xml — never in any project file.
+
+
+STEP 5 — START WILDFLY
+------------------------
+Mac/Linux:
+  ~/wildfly/bin/standalone.sh -c standalone-full.xml
+
+Windows:
+  C:\wildfly\bin\standalone.bat -c standalone-full.xml
+
+Wait until you see a line like:
+  WildFly Full 40.0.1.Final ... started in XXXXX ms
+
+Leave this terminal open. WildFly must stay running.
+
+
+STEP 6 — BUILD AND DEPLOY THE BACKEND
+---------------------------------------
+Open a NEW terminal in the project root (ERP-Grocery-System/).
+
+Build:
+  mvn clean package -DskipTests
+
+This creates the file: target/grocery-erp.war
+
+Copy it to WildFly:
+  Mac/Linux : cp target/grocery-erp.war ~/wildfly/standalone/deployments/
+  Windows   : copy target\grocery-erp.war C:\wildfly\standalone\deployments\
+
+Watch the WildFly terminal. After a few seconds you should see:
+  Deployed "grocery-erp.war"
+
+A file called grocery-erp.war.deployed will appear in the
+deployments folder — this confirms success.
+
+Quick test: open http://localhost:8080/api/inventory/stores
+in your browser. You should see a JSON response.
+
+
+STEP 7 — INSTALL FRONTEND DEPENDENCIES
+----------------------------------------
+Run this once for each portal:
+
+  cd frontend
+  npm install
+  cd ..
+
+  cd supplier-portal
+  npm install
+  cd ..
+
+  cd cashier-portal
+  npm install
+  cd ..
+
+
+STEP 8 — START THE THREE PORTALS
+----------------------------------
+Each portal needs its own terminal. Keep all three running.
+
+Terminal 1 — ERP Portal (main management app):
+  cd frontend
+  npm run dev
+  → Opens at http://localhost:5173
+
+Terminal 2 — Supplier Portal:
+  cd supplier-portal
+  npm run dev
+  → Opens at http://localhost:5174
+
+Terminal 3 — Cashier Portal:
+  cd cashier-portal
+  npm run dev
+  → Opens at http://localhost:5175
+
+
+WHAT SHOULD BE RUNNING
+-----------------------
+You should have 4 processes running at the same time:
+
+  Process            URL
+  ----------------   --------------------------
+  WildFly (backend)  http://localhost:8080
+  ERP Portal         http://localhost:5173
+  Supplier Portal    http://localhost:5174
+  Cashier Portal     http://localhost:5175
+
+
+TROUBLESHOOTING
+---------------
+grocery-erp.war.failed appears instead of .war.deployed
+  → Check the WildFly terminal for the error message.
+    Most likely the database credentials in standalone.xml
+    are wrong, or the Neon database is unreachable.
+
+Frontend shows blank page or "Failed to fetch"
+  → WildFly must be running first. The frontends proxy
+    all /api calls to localhost:8080.
+
+mvn clean package fails with a Java version error
+  → Make sure JAVA_HOME points to JDK 21.
+    Run: java -version to confirm.
+
+Port already in use (8080)
+  → Something else is running on that port (another WildFly,
+    Tomcat, etc.). Stop it and try again.
+
+Neon connection refused
+  → Make sure the connection URL includes ?sslmode=require
+    at the end. Neon requires SSL.
+
+========================================

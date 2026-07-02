@@ -1,30 +1,28 @@
 package com.groceryerp.reporting.services;
 
-// @Stateless
-// Receives a DataCollector and parameters per call, builds and returns a ReportBean.
-// No state is held between calls.
-
 import com.groceryerp.reporting.beans.ReportBean;
+import jakarta.ejb.EJB;
+import jakarta.ejb.Stateless;
 
 /**
- * ReportGenerator — Stateless helper for the Reporting module.
+ * ReportGenerator — @Stateless helper for the Reporting module.
  *
- * Populates ReportBean objects from data fetched via DataCollector.
- * Each build method receives parameters, constructs a fresh ReportBean, and returns it.
+ * Populates ReportBean value objects from data fetched via {@link DataCollector}.
+ * The collector was previously wired in through a setDataCollector() setter
+ * (called from ReportingModule's constructor); it is now injected by the
+ * container via {@code @EJB}, so the setter is gone.
  *
- * Bean type: @Stateless — no conversational state, every report is built on demand.
+ * Each build method receives parameters, constructs a fresh ReportBean, and
+ * returns it. Bean type: @Stateless — no conversational state.
  */
+@Stateless
 public class ReportGenerator {
 
-    // ── Injected service (infrastructure, not business state) ─────
+    // ── Container-injected collaborator (replaces the setter-wired field) ──
+    @EJB
     private DataCollector dataCollector;
 
-    public ReportGenerator() { /* no-arg constructor required by IoC */ }
-
-    /** Injects the data collector dependency. */
-    public void setDataCollector(DataCollector dataCollector) {
-        this.dataCollector = dataCollector;
-    }
+    public ReportGenerator() { /* required no-arg constructor for the container */ }
 
     /** Builds a FINANCE report for the given date range and optional store. */
     public ReportBean buildFinanceReport(String dateRange, String storeId) {

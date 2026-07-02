@@ -3,29 +3,36 @@ package com.groceryerp.hr;
 import com.groceryerp.hr.beans.EmployeeBean;
 import com.groceryerp.hr.beans.PayrollBean;
 import com.groceryerp.hr.beans.ShiftBean;
-import com.groceryerp.hr.beans.AttendanceBean;
 import com.groceryerp.interfaces.*;
+import jakarta.ejb.EJB;
+import jakarta.ejb.LocalBean;
+import jakarta.ejb.Remove;
+import jakarta.ejb.Stateful;
 import java.util.*;
 
 /**
- * HR Module - Component implementation.
+ * HR Module — now a real @Stateful session bean (previously a plain object
+ * manually instantiated and wired in Main.java).
  *
  * Payroll is a multi-step session: beginPayrollSession() → loadShifts() →
  * computeGrossPay() → finalizePayroll() → endSession(). Each step stores its
  * result in session fields for the next step to consume.
  *
  * Stateless reads (getStaffIdsByStore, getTotalPayrollCost, getStaffCount) do
- * not touch session fields — they go straight to the DAO.
+ * not touch session fields — they go straight to the repository.
  *
- * Bean type: @Stateful — intermediate payroll values accumulate across method calls
- * and must be held in instance state until endSession() clears them.
+ * Bean type: @Stateful — intermediate payroll values accumulate across method
+ * calls and must be held in instance state until endSession() clears them.
+ * Persistence is delegated to the injected @Stateless {@link HRRepository}
+ * (the old EmployeeBean.DAO / ShiftBean.DAO / PayrollBean.DAO fields).
  */
+@Stateful
+@LocalBean
 public class HRModule implements IStaffData, IPayrollService {
 
-    // ── DAO fields (infrastructure, not business state) ───────────
-    private final EmployeeBean.DAO employeeDao = new EmployeeBean.DAO();
-    private final ShiftBean.DAO shiftDao       = new ShiftBean.DAO();
-    private final PayrollBean.DAO payrollDao   = new PayrollBean.DAO();
+    // ── Container-injected persistence service (replaces the 3 nested DAO fields) ──
+    @EJB
+    private HRRepository repository;
 
     // ── Session state fields ──────────────────────────────────────
     private String activeEmployeeId;
@@ -34,14 +41,14 @@ public class HRModule implements IStaffData, IPayrollService {
     private double accumulatedHours;
     private double computedGrossPay;
 
-    public HRModule() { /* no-arg constructor required by JavaBeans spec */ }
+    public HRModule() { /* required no-arg constructor for the container */ }
 
     // ── Stateful session lifecycle ────────────────────────────────
 
     /** Step 1 — begin a payroll session for the given employee. */
     public void beginPayrollSession(String employeeId) {
         this.activeEmployeeId = employeeId;
-        this.activeEmployee   = employeeDao.findById(employeeId);
+        this.activeEmployee   = repository.findEmployeeById(employeeId);
         this.activeShifts     = new ArrayList<>();
         this.accumulatedHours = 0.0;
         this.computedGrossPay = 0.0;
@@ -49,7 +56,7 @@ public class HRModule implements IStaffData, IPayrollService {
 
     /** Step 2 — load all shifts for the active employee in the given period. */
     public void loadShifts(String period) {
-        this.activeShifts = shiftDao.findByEmployeeAndPeriod(activeEmployeeId, period);
+        this.activeShifts = repository.findShiftsByEmployeeAndPeriod(activeEmployeeId, period);
         this.accumulatedHours = 0.0;
         for (ShiftBean shift : activeShifts) {
             accumulatedHours += shift.getHoursWorked();
@@ -80,12 +87,12 @@ public class HRModule implements IStaffData, IPayrollService {
         payroll.setGrossPay(Math.round(computedGrossPay * 100.0) / 100.0);
         payroll.setDeductions(deductions);
         payroll.setNetPay(netPay);
-        payrollDao.save(payroll);
+        repository.savePayroll(payroll);
         return payroll;
     }
 
-    // @Remove
     /** Clears all session state. Must be called after finalizePayroll(). */
+    @Remove
     public void endSession() {
         activeEmployeeId  = null;
         activeEmployee    = null;
@@ -110,18 +117,16 @@ public class HRModule implements IStaffData, IPayrollService {
 
     @Override
     public List<String> getStaffIdsByStore(String storeId) {
-        return employeeDao.findIdsByStore(storeId);
+        return repository.findEmployeeIdsByStore(storeId);
     }
 
     @Override
     public double getTotalPayrollCost(String period) {
-        return payrollDao.sumCostByPeriod(period);
+        return repository.sumCostByPeriod(period);
     }
 
     @Override
     public int getStaffCount(String storeId) {
-        return employeeDao.countByStore(storeId);
+        return repository.countEmployeesByStore(storeId);
     }
 }
-
-// conflicts resolved by: Omar Khalifa

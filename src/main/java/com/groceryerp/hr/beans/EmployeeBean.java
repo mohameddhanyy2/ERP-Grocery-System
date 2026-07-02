@@ -1,155 +1,101 @@
 package com.groceryerp.hr.beans;
-import com.groceryerp.db.DatabaseManager;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
-// @Entity
-// @Table(name="employees")
-/*
- * EmployeeBean — Entity Bean mapped to the {@code employees} table.
- * One row per employee. Bean type: @Entity.
- */
-/** JavaBean representing an employee in the HR module. */
+@Entity
+@Table(name = "employees")
 public class EmployeeBean implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @Column(name = "employeeId")
     private String employeeId;
+
+    @Column(name = "storeId")
     private String storeId;
+
+    @Column(name = "name")
     private String name;
+
+    @Column(name = "phone")
+    private String phone;
+
+    @Column(name = "role")
     private String role;
-    private double hourlyRate;
+
+    /** Monthly fixed salary in EGP */
+    @Column(name = "salary")
+    private double salary;
+
+    /** Scheduled shift start time, e.g. "09:00" */
+    @Column(name = "shiftStart")
+    private String shiftStart;
+
+    /** Scheduled shift end time, e.g. "17:00" */
+    @Column(name = "shiftEnd")
+    private String shiftEnd;
+
+    /** Weekly off day, e.g. "Friday" */
+    @Column(name = "offDay")
+    private String offDay;
+
+    @Column(name = "startDate")
     private String startDate;
+
+    /** Salary earned since last payment (days worked × daily rate − penalties). Updated on each attendance check-in. */
+    @Column(name = "pendingSalary")
+    private double pendingSalary;
+
+    /** ISO date of last salary payment, e.g. "2026-06-30" */
+    @Column(name = "lastPaidDate")
+    private String lastPaidDate;
+
+    /** Kept for legacy compatibility — was hourlyRate, now unused in pay calculations but kept so old rows don't break */
+    @Column(name = "hourlyRate")
+    private double hourlyRate;
 
     public EmployeeBean() {}
 
-    public String getEmployeeId() {
-        return employeeId;
-    }
-    public void setEmployeeId(String employeeId) {
-        this.employeeId = employeeId;
-    }
+    public String getEmployeeId() { return employeeId; }
+    public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
 
-    public String getStoreId() {
-        return storeId;
-    }
-    public void setStoreId(String storeId) {
-        this.storeId = storeId;
-    }
+    public String getStoreId() { return storeId; }
+    public void setStoreId(String storeId) { this.storeId = storeId; }
 
-    public String getName() {
-        return name;
-    }
-    public void setName(String name) {
-        this.name = name;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public String getRole() {
-        return role;
-    }
-    public void setRole(String role) {
-        this.role = role;
-    }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
 
-    public double getHourlyRate() {
-        return hourlyRate;
-    }
-    public void setHourlyRate(double hourlyRate) {
-        this.hourlyRate = hourlyRate;
-    }
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 
-    public String getStartDate() {
-        return startDate;
-    }
-    public void setStartDate(String startDate) {
-        this.startDate = startDate;
-    }
+    public double getSalary() { return salary; }
+    public void setSalary(double salary) { this.salary = salary; }
 
-    // ── Nested DAO ─────────────────────────────────────────────────
+    public String getShiftStart() { return shiftStart; }
+    public void setShiftStart(String shiftStart) { this.shiftStart = shiftStart; }
 
-    /** Handles all persistence operations for the employees table. */
-    public static class DAO {
+    public String getShiftEnd() { return shiftEnd; }
+    public void setShiftEnd(String shiftEnd) { this.shiftEnd = shiftEnd; }
 
-        /** Inserts or replaces an EmployeeBean in the employees table. */
-        public void save(EmployeeBean employee) {
-            String sql = "INSERT OR REPLACE INTO employees (employeeId,storeId,name,role,hourlyRate,startDate) VALUES (?,?,?,?,?,?)";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, employee.getEmployeeId());
-                ps.setString(2, employee.getStoreId());
-                ps.setString(3, employee.getName());
-                ps.setString(4, employee.getRole());
-                ps.setDouble(5, employee.getHourlyRate());
-                ps.setString(6, employee.getStartDate());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                System.out.println("Failed to save employee: " + e.getMessage());
-            }
-        }
+    public String getOffDay() { return offDay; }
+    public void setOffDay(String offDay) { this.offDay = offDay; }
 
-        /** Finds an EmployeeBean by ID, or returns null if not found. */
-        public EmployeeBean findById(String employeeId) {
-            String sql = "SELECT employeeId,storeId,name,role,hourlyRate,startDate FROM employees WHERE employeeId = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, employeeId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) { return mapRow(rs); }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to find employee: " + e.getMessage());
-            }
-            return null;
-        }
+    public String getStartDate() { return startDate; }
+    public void setStartDate(String startDate) { this.startDate = startDate; }
 
-        /** Returns all employee IDs for a given store. */
-        public List<String> findIdsByStore(String storeId) {
-            List<String> list = new ArrayList<>();
-            String sql = "SELECT employeeId FROM employees WHERE storeId = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, storeId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) { list.add(rs.getString("employeeId")); }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to list employee IDs: " + e.getMessage());
-            }
-            return list;
-        }
+    public double getPendingSalary() { return pendingSalary; }
+    public void setPendingSalary(double pendingSalary) { this.pendingSalary = pendingSalary; }
 
-        /** Returns the number of employees in a given store. */
-        public int countByStore(String storeId) {
-            String sql = "SELECT COUNT(*) FROM employees WHERE storeId = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, storeId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) { return rs.getInt(1); }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to count employees: " + e.getMessage());
-            }
-            return 0;
-        }
+    public String getLastPaidDate() { return lastPaidDate; }
+    public void setLastPaidDate(String lastPaidDate) { this.lastPaidDate = lastPaidDate; }
 
-        private EmployeeBean mapRow(ResultSet rs) throws SQLException {
-            EmployeeBean e = new EmployeeBean();
-            e.setEmployeeId(rs.getString("employeeId"));
-            e.setStoreId(rs.getString("storeId"));
-            e.setName(rs.getString("name"));
-            e.setRole(rs.getString("role"));
-            e.setHourlyRate(rs.getDouble("hourlyRate"));
-            e.setStartDate(rs.getString("startDate"));
-            return e;
-        }
-    }
+    public double getHourlyRate() { return hourlyRate; }
+    public void setHourlyRate(double hourlyRate) { this.hourlyRate = hourlyRate; }
 }
-
-
-// conflicts resolved by: Omar Khalifa

@@ -1,48 +1,53 @@
 package com.groceryerp.reporting.services;
 
-// @Stateless
-// Each fetch method receives a parameter and returns a value immediately.
-// No data is accumulated between calls. Holds only injected interface fields.
-
 import com.groceryerp.interfaces.ICustomerData;
 import com.groceryerp.interfaces.IFinanceData;
 import com.groceryerp.interfaces.ISalesData;
 import com.groceryerp.interfaces.IStaffData;
 import com.groceryerp.interfaces.ITotalStock;
+import jakarta.ejb.Stateless;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 /**
- * DataCollector — Stateless helper for the Reporting module.
+ * DataCollector — @Stateless helper for the Reporting module.
  *
- * Holds all five required interfaces injected via IoC. Each fetch method
- * delegates to one interface and returns immediately — no state accumulated.
+ * Holds all five required interfaces. These were previously wired in via
+ * IoC setters (called from ReportingModule, which in turn was wired in Main).
+ * They are now injected directly by the container via {@code @Inject}, so the
+ * setSalesData/setStaffData/setTotalStock/setFinanceData/setCustomerData setters
+ * are gone.
  *
- * Bean type: @Stateless — pure delegation, no conversational state.
+ * Each fetch method delegates to one interface and returns immediately — no
+ * state accumulated between calls. Bean type: @Stateless — pure delegation.
+ *
+ * NOTE: fetchTotalStockAllProducts() and fetchLowStockCount() are cross-table
+ * aggregates over the {@code stock} / {@code stock_alerts} tables, which have no
+ * owning @Entity in this module. They were raw JDBC via DatabaseManager; now they
+ * run through the container EntityManager as native queries (same SQL), so the
+ * report output is identical but there is no more manual Connection/JDBC and no
+ * dependency on the deleted DatabaseManager.
  */
+@Stateless
 public class DataCollector {
 
-    // ── All five required interfaces — injected via setters (IoC) ──
+    @PersistenceContext(unitName = "groceryerp")
+    private EntityManager em;
+
+    // ── All five required interfaces — container-injected via CDI ──
+    @Inject
     private ISalesData salesData;
+    @Inject
     private IStaffData staffData;
+    @Inject
     private ITotalStock totalStock;
+    @Inject
     private IFinanceData financeData;
+    @Inject
     private ICustomerData customerData;
 
-    public DataCollector() { /* no-arg constructor required by IoC */ }
-
-    /** Injects the sales data dependency. */
-    public void setSalesData(ISalesData salesData)          { this.salesData = salesData; }
-
-    /** Injects the staff data dependency. */
-    public void setStaffData(IStaffData staffData)          { this.staffData = staffData; }
-
-    /** Injects the total stock dependency. */
-    public void setTotalStock(ITotalStock totalStock)        { this.totalStock = totalStock; }
-
-    /** Injects the finance data dependency. */
-    public void setFinanceData(IFinanceData financeData)    { this.financeData = financeData; }
-
-    /** Injects the customer data dependency. */
-    public void setCustomerData(ICustomerData customerData) { this.customerData = customerData; }
+    public DataCollector() { /* required no-arg constructor for the container */ }
 
     /** Fetches total revenue for the given period from IFinanceData. */
     public double fetchRevenue(String period)    { return financeData.getTotalRevenue(period); }
@@ -64,31 +69,25 @@ public class DataCollector {
 
     /** Returns the sum of all stock quantities across every product and store. */
     public int fetchTotalStockAllProducts() {
-        String sql = "SELECT COALESCE(SUM(quantity), 0) FROM stock";
-        try (java.sql.Connection conn = com.groceryerp.db.DatabaseManager.getConnection();
-             java.sql.PreparedStatement ps = conn.prepareStatement(sql);
-             java.sql.ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) return rs.getInt(1);
-        } catch (java.sql.SQLException e) {
-            System.out.println("fetchTotalStockAllProducts failed: " + e.getMessage());
-        }
-        return 0;
+        // Native query — 'stock' has no @Entity. Was DatabaseManager raw JDBC.
+        Number total = (Number) em.createNativeQuery(
+                "SELECT COALESCE(SUM(quantity), 0) FROM stock").getSingleResult();
+        return total == null ? 0 : total.intValue();
     }
 
     /** Returns the number of distinct low-stock alert rows for a given store (or all stores if null/blank). */
     public int fetchLowStockCount(String storeId) {
-        String sql = (storeId == null || storeId.isBlank())
-            ? "SELECT COUNT(*) FROM stock_alerts"
-            : "SELECT COUNT(*) FROM stock_alerts WHERE storeId = ?";
-        try (java.sql.Connection conn = com.groceryerp.db.DatabaseManager.getConnection();
-             java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
-            if (storeId != null && !storeId.isBlank()) ps.setString(1, storeId);
-            try (java.sql.ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getInt(1);
-            }
-        } catch (java.sql.SQLException e) {
-            System.out.println("fetchLowStockCount failed: " + e.getMessage());
+        // Native query — 'stock_alerts' aggregate, no @Entity COUNT here. Was DatabaseManager raw JDBC.
+        Number count;
+        if (storeId == null || storeId.isBlank()) {
+            count = (Number) em.createNativeQuery(
+                    "SELECT COUNT(*) FROM stock_alerts").getSingleResult();
+        } else {
+            count = (Number) em.createNativeQuery(
+                    "SELECT COUNT(*) FROM stock_alerts WHERE storeId = :storeId")
+                    .setParameter("storeId", storeId)
+                    .getSingleResult();
         }
-        return 0;
+        return count == null ? 0 : count.intValue();
     }
 }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Deploy at the ROOT context ("/") instead of the default "/grocery-erp"
+  (derived from the WAR name). The pre-built frontend bundles call the API at
+  http://localhost:8080/api, and JaxRsApplication mounts JAX-RS at "/api", so a
+  root context makes the API reachable at exactly http://localhost:8080/api —
+  matching what the frontend expects without rebuilding it.
+-->
+<jboss-web>
+    <context-root>/</context-root>
+</jboss-web>

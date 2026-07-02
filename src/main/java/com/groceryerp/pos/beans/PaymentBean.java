@@ -1,33 +1,41 @@
 package com.groceryerp.pos.beans;
 
-import com.groceryerp.db.DatabaseManager;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 
-// @Entity
-// @Table(name="payments")
 /**
- * PaymentBean — Entity Bean mapped to the {@code payments} table.
- * One row per payment record for a sale. Bean type: @Entity.
+ * PaymentBean — JPA entity mapped to the {@code payments} table.
+ * One row per payment record for a sale.
+ *
+ * The nested DAO is gone — persistence is handled by
+ * {@link com.groceryerp.pos.POSRepository}. Bean type: @Entity.
  */
+@Entity
+@Table(name = "payments")
 public class PaymentBean implements Serializable {
 
-    // @Id
+    @Id
+    @Column(name = "paymentId")
     /** Unique payment identifier, e.g. "PAY-1234567890". */
     private String paymentId;
     /** ID of the sale this payment is for. */
+    @Column(name = "saleId")
     private String saleId;
     /** Payment method: CASH, CARD, or WALLET. */
+    @Column(name = "method")
     private String method;
     /** Amount the customer paid. */
+    @Column(name = "amountPaid")
     private double amountPaid;
     /** Change returned to customer (amountPaid - grandTotal). */
+    @Column(name = "change")
     private double change;
     /** ISO-8601 timestamp of when the payment was processed. */
+    @Column(name = "processedAt")
     private String processedAt;
 
     /** No-argument constructor required by JavaBeans spec. */
@@ -50,53 +58,6 @@ public class PaymentBean implements Serializable {
 
     public String getProcessedAt() { return processedAt; }
     public void setProcessedAt(String processedAt) { this.processedAt = processedAt; }
-
-    // ── Nested DAO ─────────────────────────────────────────────────
-
-    /** Handles all persistence operations for the payments table. */
-    public static class DAO {
-
-        /** Persists a PaymentBean to the payments table. */
-        public void save(PaymentBean payment) {
-            String sql = "INSERT OR REPLACE INTO payments (paymentId,saleId,method,amountPaid,change,processedAt) VALUES (?,?,?,?,?,?)";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, payment.getPaymentId());
-                ps.setString(2, payment.getSaleId());
-                ps.setString(3, payment.getMethod());
-                ps.setDouble(4, payment.getAmountPaid());
-                ps.setDouble(5, payment.getChange());
-                ps.setString(6, payment.getProcessedAt());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                System.out.println("Failed to save payment: " + e.getMessage());
-            }
-        }
-
-        /** Finds a PaymentBean by sale ID, or returns null if not found. */
-        public PaymentBean findBySaleId(String saleId) {
-            String sql = "SELECT * FROM payments WHERE saleId = ?";
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, saleId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        PaymentBean p = new PaymentBean();
-                        p.setPaymentId(rs.getString("paymentId"));
-                        p.setSaleId(rs.getString("saleId"));
-                        p.setMethod(rs.getString("method"));
-                        p.setAmountPaid(rs.getDouble("amountPaid"));
-                        p.setChange(rs.getDouble("change"));
-                        p.setProcessedAt(rs.getString("processedAt"));
-                        return p;
-                    }
-                }
-            } catch (SQLException e) {
-                System.out.println("Failed to find payment: " + e.getMessage());
-            }
-            return null;
-        }
-    }
 }
 
 // reviewed by: Omar Khalifa

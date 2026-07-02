@@ -1,77 +1,80 @@
 package com.groceryerp.supplier;
 
-// @Stateless
-// Chosen because every method receives all data it needs through parameters,
-// reads/writes through DAOs, and returns a result immediately. No order list
-// is held in memory between calls — all state lives in the database.
-import com.groceryerp.interfaces.*;
-import com.groceryerp.inventory.CentralInventoryBean;
-import com.groceryerp.inventory.beans.*;
-import com.groceryerp.supplier.beans.*;
-import java.util.*;
 import com.groceryerp.finance.FinanceModule;
+import com.groceryerp.interfaces.IOrderStatus;
+import com.groceryerp.interfaces.IStockAlerts;
+import com.groceryerp.interfaces.ISupplierService;
+import com.groceryerp.inventory.beans.ProductBean;
+import com.groceryerp.supplier.beans.DeliveryBean;
+import com.groceryerp.supplier.beans.OrderLineBean;
+import com.groceryerp.supplier.beans.PurchaseOrderBean;
+import com.groceryerp.supplier.beans.SupplierBean;
+import jakarta.ejb.EJB;
+import jakarta.ejb.LocalBean;
+import jakarta.ejb.Stateless;
+import jakarta.inject.Inject;
 
-/*
- * SupplierModule — Stateless Session Bean for supplier and purchase order management.
- *
- * Every method is self-contained: receives inputs, reads/writes through DAOs, returns result.
- * No order or supplier data is stored in memory between calls.
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * SupplierModule — now a real @Stateless session bean (previously a plain object
+ * manually instantiated and IoC-wired in Main.java via setter injection).
  *
  * EJB Session Type: @Stateless
- *   Reason: Each method call (placeOrder, getOrderStatus) is self-contained.
- *   No conversational state needs to be held between calls, so Stateless fits.
- *   Contrast with @Stateful (used by HRModule) where payroll spans multiple steps.
+ *   Each call (placeOrder, recordDelivery, getOrderStatus) is self-contained; no
+ *   conversational state is held between calls — all state lives in the database.
  *
  * PROVIDED interfaces : ISupplierService, IOrderStatus
- * REQUIRED interfaces : IStoreInventory, IStockAlerts  (injected via IoC setters)
+ * REQUIRED interfaces : ITotalStock, IStockAlerts — injected by the container via
+ *                       @Inject, replacing the old setCentralInventory() /
+ *                       setStockAlerts() setter calls in Main.java. Both are
+ *                       produced by the composite CentralInventoryBean.
  *
- * IoC rule: this class never calls "new StoreInventoryBean()" or any other module.
- *           All dependencies arrive from outside through setter injection (Main.java).
+ * Persistence is delegated to the injected @Stateless {@link SupplierRepository}
+ * (the old PurchaseOrderBean.DAO / SupplierBean.DAO / DeliveryBean.DAO /
+ * OrderLineBean.DAO fields).
  */
-// @Stateless  -- EJB annotation (requires Jakarta EE runtime; shown here for modelling)
+@Stateless
+@LocalBean
 public class SupplierModule implements ISupplierService, IOrderStatus {
 
-    // ── DAO fields (infrastructure, not business state) ───────────
-    private final PurchaseOrderBean.DAO orderDao = new PurchaseOrderBean.DAO();
-    private final SupplierBean.DAO supplierDao   = new SupplierBean.DAO();
-    private final DeliveryBean.DAO deliveryDao   = new DeliveryBean.DAO();
-    private final OrderLineBean.DAO orderLineDao = new OrderLineBean.DAO();
+    /** Container-injected persistence service (replaces the 4 nested DAO fields). */
+    @EJB
+    private SupplierRepository repository;
 
-    // ── Required interfaces — injected via IoC, never instantiated here ──
-    private CentralInventoryBean centralInventory;
+    /**
+     * Inventory persistence. A delivery replenishes stock by writing directly to
+     * the stock table via adjustStock() — this is reliable regardless of whether
+     * the @Stateful CentralInventoryBean's in-memory store registry happens to
+     * contain the target store in this bean instance.
+     */
+    @EJB
+    private com.groceryerp.inventory.InventoryRepository inventoryRepository;
+
+    /**
+     * Required: low-stock alert service. Used to clear a restock alert once a
+     * delivery replenishes the product. Was set via setStockAlerts() in Main.java.
+     */
+    @Inject
     private IStockAlerts stockAlerts;
+
+    /** Required cross-module dependency for booking the purchase cost as an expense. */
+    @Inject
     private FinanceModule financeModule;
 
-    public SupplierModule() {}
+    public SupplierModule() { /* required no-arg constructor for the container */ }
 
-    // ── IoC setter injection ──────────────────────────────────────────────
-
-    /** Injects the central inventory so deliveries update the correct store. */
-    public void setCentralInventory(CentralInventoryBean centralInventory) {
-        this.centralInventory = centralInventory;
-    }
-
-    /** Injects the stock alerts dependency. */
-    public void setStockAlerts(IStockAlerts stockAlerts) {
-        this.stockAlerts = stockAlerts;
-    }
-
-    /** Injects the finance module dependency. */
-    public void setFinanceModule(FinanceModule financeModule) {
-        this.financeModule = financeModule;
-    }
-
-    // ── ISupplierService (provided) ─────────────────────────────────────────────────
+    // ── ISupplierService (provided) ───────────────────────────────
 
     /**
      * Places a purchase order with the given supplier for a product.
-     * First checks IStockAlerts to confirm restocking is actually needed.
-     * Returns the new order ID, or a skip message if stock is sufficient.
+     * Returns the new order ID.
      */
     @Override
     public String placeOrder(String supplierId, String productId, int quantity, String storeId) {
-        ProductBean productBean = new ProductBean.DAO().findById(productId);
-        double unitCost = productBean.getPrice();
+        ProductBean productBean = repository.findProductById(productId);
+        double unitCost = productBean.getUnitCost();
 
         PurchaseOrderBean order = new PurchaseOrderBean();
         order.setOrderId("ORD-" + System.currentTimeMillis());
@@ -81,7 +84,7 @@ public class SupplierModule implements ISupplierService, IOrderStatus {
         order.setStatus("ACCEPTED");
         order.setTotalCost(quantity * unitCost);
 
-        orderDao.save(order);
+        repository.savePurchaseOrder(order);
 
         OrderLineBean line = new OrderLineBean();
         line.setLineId("LINE-" + System.currentTimeMillis());
@@ -89,7 +92,7 @@ public class SupplierModule implements ISupplierService, IOrderStatus {
         line.setProductId(productId);
         line.setQuantity(quantity);
         line.setUnitPrice(unitCost);
-        orderLineDao.save(line);
+        repository.saveOrderLine(line);
 
         System.out.println("[SupplierModule] Order placed: " + order);
         return order.getOrderId();
@@ -99,18 +102,18 @@ public class SupplierModule implements ISupplierService, IOrderStatus {
     @Override
     public List<String> getAllSupplierIds() {
         List<String> ids = new ArrayList<>();
-        for (String s : supplierDao.findAllIds()) {
+        for (String s : repository.findAllSupplierIds()) {
             ids.add(s);
         }
         return ids;
     }
 
-    // ── IOrderStatus ──────────────────────────────────────────────────────
+    // ── IOrderStatus (provided) ───────────────────────────────────
 
     /** Returns the current status (PENDING / DELIVERED) of an order by its ID. */
     @Override
     public String getOrderStatus(String orderId) {
-        PurchaseOrderBean order = orderDao.findById(orderId);
+        PurchaseOrderBean order = repository.findPurchaseOrderById(orderId);
         if (order != null) {
             return order.getStatus();
         }
@@ -124,7 +127,7 @@ public class SupplierModule implements ISupplierService, IOrderStatus {
     @Override
     public double getTotalPurchaseCost(String period) {
         double total = 0.0;
-        for (PurchaseOrderBean order : orderDao.findAll()) {
+        for (PurchaseOrderBean order : repository.findAllPurchaseOrders()) {
             if (order.getOrderDate().contains(period)) {
                 total += order.getTotalCost();
             }
@@ -136,7 +139,7 @@ public class SupplierModule implements ISupplierService, IOrderStatus {
     @Override
     public List<String> getOrderIdsByStore(String storeId) {
         List<String> result = new ArrayList<>();
-        for (PurchaseOrderBean order : orderDao.findAll()) {
+        for (PurchaseOrderBean order : repository.findAllPurchaseOrders()) {
             if (order.getStoreId().equals(storeId)) {
                 result.add(order.getOrderId());
             }
@@ -144,73 +147,56 @@ public class SupplierModule implements ISupplierService, IOrderStatus {
         return result;
     }
 
-    // ── Extra helper: record a delivery and restock the store ─────────────
+    // ── Extra helper: record a delivery and restock the store ─────
 
     /**
      * Records arrival of goods for an order and restocks the store inventory.
-     * Marks the order as DELIVERED.
-     * Uses IStoreInventory — the required interface — to update stock.
+     * Marks the order as DELIVERED. Uses the injected inventory (ITotalStock) to
+     * locate the store and the injected IStockAlerts to clear the restock alert.
      */
     public String recordDelivery(String orderId, String productId, int quantity) {
-        PurchaseOrderBean targetOrder = orderDao.findById(orderId);
+        PurchaseOrderBean targetOrder = repository.findPurchaseOrderById(orderId);
         if (targetOrder == null) {
             return "DELIVERY_FAILED: order not found";
         }
 
-        DeliveryBean delivery = new DeliveryBean();
-        delivery.setDeliveryId("DEL-" + System.currentTimeMillis());
-        delivery.setOrderId(orderId);
-        delivery.setDeliveryDate(getCurrentDate());
-        delivery.setDeliveryStatus("RECEIVED");
-        deliveryDao.save(delivery);
+        // Always adjust stock for this line — the frontend calls once per order line,
+        // each with a different productId, so all lines must update stock.
+        inventoryRepository.adjustStock(targetOrder.getStoreId(), productId, quantity);
 
-        orderDao.updateStatus(orderId, "DELIVERED");
+        // Mark order DELIVERED and create the delivery record only on the first call
+        // (when it is not yet DELIVERED). Subsequent line calls skip this so we don't
+        // create duplicate delivery records or double-book the expense.
+        if (!"DELIVERED".equals(targetOrder.getStatus())) {
+            DeliveryBean delivery = new DeliveryBean();
+            delivery.setDeliveryId("DEL-" + System.currentTimeMillis());
+            delivery.setOrderId(orderId);
+            delivery.setDeliveryDate(getCurrentDate());
+            delivery.setDeliveryStatus("RECEIVED");
+            repository.saveDelivery(delivery);
+            repository.updateOrderStatus(orderId, "DELIVERED");
 
-        // Update stock at the correct store via CentralInventoryBean
-        var store = centralInventory != null ? centralInventory.getStore(targetOrder.getStoreId()) : null;
-        if (store != null) store.updateStock(productId, quantity);
-
-        // Record purchase cost as a finance expense
-        com.groceryerp.finance.beans.ExpenseBean expense = new com.groceryerp.finance.beans.ExpenseBean();
-        expense.setExpenseId("EXP-" + System.currentTimeMillis());
-        expense.setStoreId(targetOrder.getStoreId());
-        expense.setCategory("PURCHASE");
-        expense.setAmount(targetOrder.getTotalCost());
-        expense.setDate(java.time.LocalDate.now().toString());
-        new com.groceryerp.finance.beans.ExpenseBean.DAO().save(expense);
-
-        // Resolve the low-stock alert now that stock has been replenished
-        if (centralInventory != null) {
-            centralInventory.resolveRestockAlert(productId, targetOrder.getStoreId());
+            if (financeModule != null) {
+                financeModule.recordPurchaseCost(targetOrder.getStoreId(), productId, quantity, targetOrder.getTotalCost());
+            }
         }
 
-        System.out.println("[SupplierModule] Delivery recorded: " + delivery);
-
-        // Deduct from stock alerts if needed (e.g. if this delivery fulfills a low stock alert)
         if (stockAlerts != null) {
             stockAlerts.resolveRestockAlert(productId, targetOrder.getStoreId());
         }
 
-        // record cost in finance module (not shown here, but would use IoC to call FinanceModule's method)
-        if (financeModule != null) {
-            financeModule.recordPurchaseCost(targetOrder.getStoreId(), productId, quantity, targetOrder.getTotalCost());
-        }
-
-        return delivery.getDeliveryId();
+        return "DEL-" + orderId;
     }
 
     /** Adds a supplier to the system. */
     public void addSupplier(SupplierBean supplier) {
-        supplierDao.save(supplier);
+        repository.saveSupplier(supplier);
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────
+    // ── Private helpers ───────────────────────────────────────────
 
     private String getCurrentDate() {
-        // Simple date string without importing java.time (plain Java)
+        // Simple date string (preserves the original plain-Java behaviour).
         return new java.util.Date().toString();
     }
 }
-
-
-// conflicts resolved by: Omar Khalifa

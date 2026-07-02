@@ -1,95 +1,83 @@
 package com.groceryerp.customer;
 
-// @Stateless
-// Chosen because each method reads from or writes to the database via a DAO
-// and returns immediately. No customer or loyalty state accumulates between calls.
-
 import com.groceryerp.customer.beans.CustomerBean;
 import com.groceryerp.customer.beans.LoyaltyBean;
-import com.groceryerp.customer.beans.PurchaseHistoryBean;
 import com.groceryerp.interfaces.ICustomerData;
 import com.groceryerp.interfaces.ILoyaltyService;
 import com.groceryerp.interfaces.ISalesData;
+import jakarta.ejb.EJB;
+import jakarta.ejb.LocalBean;
+import jakarta.ejb.Stateless;
+import jakarta.inject.Inject;
 
 import java.util.List;
 
-
 /**
- * CustomerModule — Stateless Session Bean for customer data and loyalty management.
- *
- * Every method reads from or writes to the database immediately and returns.
- * No customer or loyalty state is held in memory between calls.
+ * CustomerModule — now a real @Stateless session bean (previously a plain object
+ * manually instantiated and wired in Main.java).
  *
  * PROVIDED interfaces: ICustomerData, ILoyaltyService
- * REQUIRED interfaces: ISalesData (injected via IoC)
+ * REQUIRED interface:   ISalesData — injected by the container via @Inject
+ *                       instead of the old setSalesData() setter call in Main.
  *
- * Bean type: @Stateless — no conversational state, all data flows through parameters and DAOs.
+ * Persistence is delegated to the injected @Stateless {@link CustomerRepository}
+ * (the old CustomerBean.DAO / LoyaltyBean.DAO / PurchaseHistoryBean.DAO fields).
  */
+@Stateless
+@LocalBean
 public class CustomerModule implements ICustomerData, ILoyaltyService {
 
-    // ── Injected interface (infrastructure, not business state) ───
+    /** Container-injected persistence service (replaces the 3 nested DAO fields). */
+    @EJB
+    private CustomerRepository repository;
+
+    /**
+     * Required cross-module dependency. Injected by CDI rather than wired by hand
+     * in Main.java. POSModule is the producer of ISalesData.
+     */
+    @Inject
     private ISalesData salesData;
 
-    // ── DAO fields (infrastructure, not business state) ───────────
-    private final CustomerBean.DAO customerDao         = new CustomerBean.DAO();
-    private final LoyaltyBean.DAO loyaltyDao           = new LoyaltyBean.DAO();
-    private final PurchaseHistoryBean.DAO historyDao   = new PurchaseHistoryBean.DAO();
-
-
-    public CustomerModule() { /* no-arg constructor required by IoC */ }
-
-    /** Injects the sales data dependency. */
-    public void setSalesData(ISalesData salesData) { this.salesData = salesData; }
+    public CustomerModule() { /* required no-arg constructor for the container */ }
 
     // ── ICustomerData (provided) ──────────────────────────────────
 
-    /** Returns the customer's full name from the database, or a fallback if not found. */
     @Override
     public String getCustomerName(String customerId) {
-        CustomerBean customer = customerDao.findById(customerId);
+        CustomerBean customer = repository.findCustomerById(customerId);
         if (customer == null) { return "Customer-" + customerId + " not found"; }
         return customer.getName();
     }
 
-    /** Returns all sale IDs from the purchase history for the given customer. */
     @Override
     public List<String> getPurchaseHistoryIds(String customerId) {
-        return historyDao.findIdsByCustomer(customerId);
+        return repository.findSaleIdsByCustomer(customerId);
     }
 
     // ── ILoyaltyService (provided) ────────────────────────────────
 
-    /** Returns the current loyalty points for the given customer, or 0 if no record exists. */
     @Override
     public int getLoyaltyPoints(String customerId) {
-        LoyaltyBean loyalty = loyaltyDao.findByCustomerId(customerId);
+        LoyaltyBean loyalty = repository.findLoyaltyByCustomerId(customerId);
         if (loyalty == null) { return 0; }
         return loyalty.getPoints();
     }
 
-    /**
-     * Adds loyalty points earned from a sale: points = (int)(saleAmount / 10).
-     * Tier is recalculated automatically by LoyaltyBean.DAO.addPoints().
-     */
     @Override
     public void addLoyaltyPoints(String customerId, double saleAmount) {
         int points = (int) (saleAmount / 10);
-        loyaltyDao.addPoints(customerId, points);
+        repository.addPoints(customerId, points);
     }
 
-    /** Returns the loyalty tier (BRONZE / SILVER / GOLD) for the given customer. */
     @Override
     public String getLoyaltyTier(String customerId) {
-        LoyaltyBean loyalty = loyaltyDao.findByCustomerId(customerId);
+        LoyaltyBean loyalty = repository.findLoyaltyByCustomerId(customerId);
         if (loyalty == null) { return "BRONZE"; }
         return loyalty.getTier();
     }
 
-    /** Returns the total amount spent by a customer across all their sales. */
     @Override
     public double getTotalSpend(String customerId) {
         return salesData.getTotalSpendByCustomer(customerId);
     }
 }
-
-// conflicts resolved by: Omar Khalifa

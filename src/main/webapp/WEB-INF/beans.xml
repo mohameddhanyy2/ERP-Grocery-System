@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CDI deployment descriptor. bean-discovery-mode=all so every managed bean
+  (session beans, JAX-RS resources, the AlertBroadcaster) is discovered and
+  injectable without per-class annotation. This replaces the manual `new`
+  wiring that used to live in Main.java / ApiServer.java.
+-->
+<beans xmlns="https://jakarta.ee/xml/ns/jakartaee"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+           https://jakarta.ee/xml/ns/jakartaee/beans_4_0.xsd"
+       version="4.0"
+       bean-discovery-mode="all">
+</beans>

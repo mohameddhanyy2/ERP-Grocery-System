@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, Package, Truck,
-  Users, DollarSign, BarChart3, UserCheck, Store
+  Users, DollarSign, BarChart3, UserCheck, ScanBarcode, ExternalLink
 } from 'lucide-react';
 
 const nav = [
@@ -17,16 +17,10 @@ const nav = [
 
 export default function Sidebar() {
   return (
-    <aside className="fixed top-0 left-0 h-screen w-60 bg-gray-900 border-r border-gray-800 flex flex-col z-40">
+    <aside className="fixed top-0 left-0 h-screen w-60 bg-white border-r border-gray-200 flex flex-col z-40">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-800">
-        <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
-          <Store size={16} className="text-white" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-white leading-tight">ERP Grocery</p>
-          <p className="text-xs text-gray-500">Store Management</p>
-        </div>
+      <div className="flex items-center justify-center px-2 py-4 border-b border-gray-100">
+        <img src="/masri-logo.png" alt="Masri" className="w-full max-h-28 object-contain" />
       </div>
 
       {/* Nav */}
@@ -39,8 +33,8 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-brand-600 text-white'
-                  : 'text-gray-400 hover:text-gray-100 hover:bg-gray-800'
+                  ? 'bg-brand-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`
             }
           >
@@ -50,8 +44,18 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-5 py-4 border-t border-gray-800">
-        <p className="text-xs text-gray-600">Multi-Store ERP v1.0</p>
+      <div className="px-3 py-4 border-t border-gray-100 space-y-2">
+        <a
+          href="http://localhost:5175"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+        >
+          <ScanBarcode size={16} />
+          Cashier Portal
+          <ExternalLink size={11} className="ml-auto text-gray-400" />
+        </a>
+        <p className="text-xs text-gray-400 px-3">Masri ERP · since 1938</p>
       </div>
     </aside>
   );

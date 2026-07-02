@@ -60,8 +60,8 @@ export default function Reporting() {
 
       {report && (
         <div className="card">
-          <h3 className="text-sm font-semibold text-gray-300 mb-3">Report Output — {type} / {period} / {storeId}</h3>
-          <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono bg-gray-950 rounded-lg p-4 border border-gray-800">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Report Output — {type} / {period} / {storeId}</h3>
+          <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-50 rounded-lg p-4 border border-gray-200">
             {report}
           </pre>
         </div>

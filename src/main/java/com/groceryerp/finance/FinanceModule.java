@@ -2,52 +2,52 @@ package com.groceryerp.finance;
 
 import java.time.LocalDate;
 
-// @Stateless
-// Chosen because each method computes and returns a result immediately using
-// injected interfaces and DAOs. No intermediate values are stored between calls.
-// Every invocation is fully self-contained.
-
 import com.groceryerp.finance.beans.ExpenseBean;
-import com.groceryerp.finance.beans.RevenueBean;
 import com.groceryerp.interfaces.IFinanceData;
 import com.groceryerp.interfaces.IOrderStatus;
 import com.groceryerp.interfaces.IProfitReport;
 import com.groceryerp.interfaces.ISalesData;
 import com.groceryerp.interfaces.IStaffData;
-
+import jakarta.ejb.EJB;
+import jakarta.ejb.LocalBean;
+import jakarta.ejb.Stateless;
+import jakarta.inject.Inject;
 
 /**
- * FinanceModule — Stateless Session Bean for revenue, expense, and profit reporting.
+ * FinanceModule — now a real @Stateless session bean (previously a plain object
+ * manually instantiated and wired in Main.java).
  *
- * Each method delegates to DAOs or injected interfaces and returns immediately.
- * No intermediate values are accumulated between calls.
+ * Each method computes and returns a result immediately using injected
+ * interfaces and the persistence repository. No conversational state is held
+ * between calls.
  *
  * PROVIDED interfaces: IFinanceData, IProfitReport
- * REQUIRED interfaces: ISalesData, IStaffData, IOrderStatus (injected via IoC)
+ * REQUIRED interfaces: ISalesData, IStaffData, IOrderStatus — injected by the
+ *                      container via @Inject instead of the old setSalesData /
+ *                      setStaffData / setOrderStatus setter calls in Main.
  *
- * Bean type: @Stateless — no conversational state, all data flows through DAOs and interfaces.
+ * Persistence is delegated to the injected @Stateless {@link FinanceRepository}
+ * (the old RevenueBean.DAO / ExpenseBean.DAO fields).
  */
+@Stateless
+@LocalBean
 public class FinanceModule implements IFinanceData, IProfitReport {
 
+    /** Container-injected persistence service (replaces the nested DAO fields). */
+    @EJB
+    private FinanceRepository repository;
+
     // ── Injected interfaces (infrastructure, not business state) ──
+    @Inject
     private ISalesData salesData;
+
+    @Inject
     private IStaffData staffData;
+
+    @Inject
     private IOrderStatus orderStatus;
 
-    // ── DAO fields (infrastructure, not business state) ───────────
-    private final RevenueBean.DAO revenueDao = new RevenueBean.DAO();
-    private final ExpenseBean.DAO expenseDao = new ExpenseBean.DAO();
-
-    public FinanceModule() { /* no-arg constructor required by IoC */ }
-
-    /** Injects the sales data dependency. */
-    public void setSalesData(ISalesData salesData) { this.salesData = salesData; }
-
-    /** Injects the staff data dependency. */
-    public void setStaffData(IStaffData staffData) { this.staffData = staffData; }
-
-    /** Injects the order status dependency. */
-    public void setOrderStatus(IOrderStatus orderStatus) { this.orderStatus = orderStatus; }
+    public FinanceModule() { /* required no-arg constructor for the container */ }
 
     public void recordPurchaseCost(String storeId, String productId, int quantity, double totalCost) {
         ExpenseBean expense = new ExpenseBean();
@@ -56,7 +56,7 @@ public class FinanceModule implements IFinanceData, IProfitReport {
         expense.setCategory("PURCHASE");
         expense.setExpenseId("EXP-" + System.currentTimeMillis());
         expense.setDate(LocalDate.now().toString());
-        expenseDao.save(expense);
+        repository.saveExpense(expense);
     }
 
     // ── IFinanceData (provided) ───────────────────────────────────
@@ -64,16 +64,15 @@ public class FinanceModule implements IFinanceData, IProfitReport {
     /** Returns the sum of gross revenue from the revenue table for the given period. */
     @Override
     public double getTotalRevenue(String period) {
-        return revenueDao.sumByPeriod(period);
+        return repository.sumRevenueByPeriod(period);
     }
 
-    /** Returns total expenses: payroll + purchase orders + misc expenses for the given period. */
+    /** Returns total expenses: payroll + all expenses (including PURCHASE rows) for the given period. */
     @Override
     public double getTotalExpenses(String period) {
-        double payroll  = staffData.getTotalPayrollCost(period);
-        double purchase = orderStatus.getTotalPurchaseCost(period);
-        double other    = expenseDao.sumByPeriod(period);
-        return payroll + purchase + other;
+        double payroll = staffData.getTotalPayrollCost(period);
+        double other   = repository.sumExpensesByPeriod(period);
+        return payroll + other;
     }
 
     /** Returns net profit = total revenue − total expenses for the given period. */
@@ -94,17 +93,14 @@ public class FinanceModule implements IFinanceData, IProfitReport {
                 + " | Revenue: " + revenue
                 + " | Expenses: " + expenses
                 + " | Net Profit: " + profit;
-    }   
+    }
 
     /**
      * Calculate overall profit (simple aggregate) using injected services.
      */
+    @Override
     public double calcProfit() {
-        if (salesData == null || staffData == null || orderStatus == null) return 0.0;
-        double revenue = getTotalRevenue("ALL");
-        double payroll = staffData.getTotalPayrollCost("ALL");
-        double purchaseCosts = orderStatus.getTotalPurchaseCost("ALL");
-        return revenue - payroll - purchaseCosts;
+        return getNetProfit(java.time.YearMonth.now().toString());
     }
 
 }

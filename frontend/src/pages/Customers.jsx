@@ -34,7 +34,7 @@ export default function Customers() {
     try {
       const [points, hist] = await Promise.all([
         api.customerPoints(c.customerId),
-        fetch(`/api/customer/history?customerId=${c.customerId}`).then(r => r.json()),
+        api.customerHistory(c.customerId),
       ]);
       setSelected({ ...c, ...points });
       setHistory(hist);
@@ -54,7 +54,7 @@ export default function Customers() {
 
   const tierColor = (t) => {
     if (t === 'GOLD')   return 'badge-yellow';
-    if (t === 'SILVER') return 'text-gray-300 bg-gray-700/50 text-xs px-2 py-0.5 rounded-full font-medium';
+    if (t === 'SILVER') return 'text-gray-700 bg-gray-200 text-xs px-2 py-0.5 rounded-full font-medium';
     return 'badge-blue';
   };
 
@@ -76,7 +76,7 @@ export default function Customers() {
         }
       />
 
-      {msg && <div className="mb-4 p-3 bg-brand-900/30 border border-brand-700 rounded-lg text-sm text-brand-300">{msg}</div>}
+      {msg && <div className="mb-4 p-3 bg-brand-100 border border-brand-200 rounded-lg text-sm text-brand-700">{msg}</div>}
 
       <div className="flex gap-3 mb-4">
         <input className="input max-w-xs" placeholder="Search by name or email…" value={filter} onChange={e => setFilter(e.target.value)} />
@@ -88,7 +88,7 @@ export default function Customers() {
             <div className="card p-0 overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-800 text-left">
+                  <tr className="border-b border-gray-200 text-left">
                     {['Customer', 'Email', 'Home Store', 'Points', 'Tier'].map(h => (
                       <th key={h} className="px-4 py-3 text-xs text-gray-500 font-medium uppercase">{h}</th>
                     ))}
@@ -97,16 +97,16 @@ export default function Customers() {
                 <tbody>
                   {filtered.map((c, i) => (
                     <tr key={i}
-                      className={`table-row cursor-pointer ${selected?.customerId === c.customerId ? 'bg-brand-900/20' : ''}`}
+                      className={`table-row cursor-pointer ${selected?.customerId === c.customerId ? 'bg-brand-50' : ''}`}
                       onClick={() => selectCustomer(c)}>
                       <td className="px-4 py-3">
-                        <p className="font-medium text-white">{c.name}</p>
+                        <p className="font-medium text-gray-900">{c.name}</p>
                         <p className="text-xs text-gray-500">{c.customerId}</p>
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-xs">{c.email || '—'}</td>
                       <td className="px-4 py-3 text-gray-400">{stores.find(s => s.id === c.registeredStoreId)?.name || c.registeredStoreId}</td>
-                      <td className="px-4 py-3 font-semibold text-white">
-                        {c.points ?? 0} <Star size={10} className="inline text-amber-400" />
+                      <td className="px-4 py-3 font-semibold text-gray-900">
+                        {c.points ?? 0} <Star size={10} className="inline text-amber-600" />
                       </td>
                       <td className="px-4 py-3"><span className={tierColor(c.tier)}>{c.tier || 'BRONZE'}</span></td>
                     </tr>
@@ -121,10 +121,10 @@ export default function Customers() {
           <div className="card">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-base font-semibold text-white">{selected.name}</h3>
+                <h3 className="text-base font-semibold text-gray-900">{selected.name}</h3>
                 <p className="text-xs text-gray-500">{selected.customerId}</p>
               </div>
-              <button className="text-gray-500 hover:text-gray-300 text-xs" onClick={() => { setSelected(null); setHistory([]); }}>✕ Close</button>
+              <button className="text-gray-500 hover:text-gray-700 text-xs" onClick={() => { setSelected(null); setHistory([]); }}>✕ Close</button>
             </div>
             <div className="grid grid-cols-3 gap-3 mb-4">
               {[
@@ -132,9 +132,9 @@ export default function Customers() {
                 { label: 'Tier',   value: selected.tier || 'BRONZE' },
                 { label: 'Spent',  value: fmt(selected.totalSpend || 0) },
               ].map(s => (
-                <div key={s.label} className="bg-gray-800 rounded-lg p-3 text-center">
+                <div key={s.label} className="bg-gray-100 rounded-lg p-3 text-center">
                   <p className="text-xs text-gray-500">{s.label}</p>
-                  <p className="text-base font-bold text-white mt-1">{s.value}</p>
+                  <p className="text-base font-bold text-gray-900 mt-1">{s.value}</p>
                 </div>
               ))}
             </div>
@@ -144,10 +144,10 @@ export default function Customers() {
               : (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {history.map((h, i) => (
-                    <div key={i} className="flex justify-between items-center text-xs bg-gray-800 rounded-lg px-3 py-2">
+                    <div key={i} className="flex justify-between items-center text-xs bg-gray-100 rounded-lg px-3 py-2">
                       <span className="text-gray-400">{h.date?.slice(0, 10)}</span>
                       <span className="text-gray-500 font-mono">{h.saleId?.slice(0, 20)}</span>
-                      <span className="text-emerald-400 font-semibold">{fmt(h.amount)}</span>
+                      <span className="text-emerald-600 font-semibold">{fmt(h.amount)}</span>
                     </div>
                   ))}
                 </div>

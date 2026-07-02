@@ -1,20 +1,11 @@
 package com.groceryerp.inventory;
 
-// @Stateful
-// Chosen because storeId, storeName, and lowStockThreshold are session-level
-// configuration set once at setup time and used across all subsequent calls.
-// checkStock() and updateStock() rely on storeId from the session — they are
-// not passed storeId as a parameter, so this bean must remember it.
-
-import com.groceryerp.db.DatabaseManager;
 import com.groceryerp.interfaces.IStoreInventory;
 import com.groceryerp.inventory.beans.StockAlertBean;
+import jakarta.enterprise.context.Dependent;
+import jakarta.inject.Inject;
 
 import java.io.Serializable;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,14 +14,16 @@ import java.util.List;
  * Leaf component of the inventory Composite Structure.
  * <p>
  * Represents the stock held by ONE physical store branch. It implements
- * {@link IStoreInventory} — the shared contract delivered by Member 1 — so
- * that callers (POS, Supplier, and the {@link CentralInventoryBean}
- * composite) can treat one store and a whole chain through the same type.
+ * {@link IStoreInventory} so that callers (POS, Supplier, and the
+ * {@link CentralInventoryBean} composite) can treat one store and a whole chain
+ * through the same type.
  * <p>
- * The class is also a JavaBean: public class, public no-argument
- * constructor, private fields, public getters/setters, and
- * {@link Serializable}.
+ * Kept as a {@code @Dependent} CDI bean rather than promoted to an @Entity:
+ * storeId / storeName / lowStockThreshold are per-store session configuration,
+ * not a persisted row. All persistence (the old raw {@code stock} / stock_alerts
+ * SQL) is delegated to the injected @Stateless {@link InventoryRepository}.
  */
+@Dependent
 public class StoreInventoryBean implements IStoreInventory, Serializable {
 
     /** Unique branch code, e.g. "STORE_A". */
@@ -38,23 +31,28 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
     /** Human-readable branch name, e.g. "Downtown Branch". */
     private String storeName;
 
-    // Required dependency — injected via setter (IoC)
-    private StockAlertMDB stockAlertMDB;
+    // Container-injected persistence service (replaces the nested DAO usage
+    // and the raw JDBC that used to live in checkStock()/updateStock()).
+    @Inject
+    private InventoryRepository repository;
+
+    // Low-stock alert sink. Was a direct reference to the fake "MDB" object whose
+    // onMessage(String,Object) was called synchronously like any other method.
+    // Now the container-injected JMS producer: updateStock() publishes an
+    // ObjectMessage to the StockAlert queue and returns immediately; the real
+    // @MessageDriven StockAlertMDB consumes it asynchronously.
+    @Inject
+    private StockAlertProducer stockAlertProducer;
 
     /** Quantity at or below which a product counts as low stock. */
     private int lowStockThreshold;
 
     /**
-     * Public no-argument constructor required by the JavaBeans spec.
-     * Starts with an empty stock map and a default threshold of 10.
+     * Public no-argument constructor required by the JavaBeans / CDI spec.
+     * Starts with a default threshold of 10.
      */
     public StoreInventoryBean() {
         this.lowStockThreshold = 10;
-    }
-
-    /** Injects the MDB that receives low-stock alert messages. */
-    public void setStockAlertMDB(StockAlertMDB stockAlertMDB) {
-        this.stockAlertMDB = stockAlertMDB;
     }
 
     // ── JavaBean accessors ──────────────────────────────────────────
@@ -62,7 +60,7 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
     /** @return the unique branch code. */
     @Override
     public String getStoreId() { return storeId; }
-    
+
     /** @param storeId the unique branch code to set. */
     public void setStoreId(String storeId) { this.storeId = storeId; }
 
@@ -86,21 +84,10 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
      * @param productId the product code to look up.
      * @return the quantity on hand, or 0 if the product is unknown.
      */
-
     @Override
     public int checkStock(String productId) {
-        String sql = "SELECT quantity FROM stock WHERE storeId = ? AND productId = ?";
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, storeId);
-            ps.setString(2, productId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) { return rs.getInt("quantity"); }
-            }
-        } catch (SQLException e) {
-            System.out.println("Failed to check stock: " + e.getMessage());
-        }
-        return 0;
+        // Was raw SQL: SELECT quantity FROM stock WHERE storeId = ? AND productId = ?
+        return repository.getStockQuantity(storeId, productId);
     }
 
     /**
@@ -108,24 +95,15 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
      * (a delivery), a negative value removes it (a sale).
      *
      * @param productId the product code to adjust.
-     * @param quantity  the signed change to apply to the current quantity.
+     * @param delta     the signed change to apply to the current quantity.
      */
     @Override
     public void updateStock(String productId, int delta) {
-        String upsert = "INSERT INTO stock (storeId,productId,quantity) VALUES (?,?,?)"
-                + " ON CONFLICT(storeId,productId) DO UPDATE SET quantity = quantity + excluded.quantity";
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(upsert)) {
-            ps.setString(1, storeId);
-            ps.setString(2, productId);
-            ps.setInt(3, delta);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Failed to update stock: " + e.getMessage());
-        }
+        // Was raw SQLite UPSERT SQL — now in InventoryRepository.adjustStock().
+        repository.adjustStock(storeId, productId, delta);
 
         // After update: check if quantity dropped below threshold and fire alert
-        if (delta < 0 && stockAlertMDB != null) {
+        if (delta < 0 && stockAlertProducer != null) {
             int newQty = checkStock(productId);
             if (newQty < lowStockThreshold) {
                 StockAlertBean alert = new StockAlertBean();
@@ -135,7 +113,8 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
                 alert.setCurrentQty(newQty);
                 alert.setThreshold(lowStockThreshold);
                 alert.setAlertDate(LocalDate.now().toString());
-                stockAlertMDB.onMessage("LOW_STOCK", alert);
+                // Publish to the JMS queue; the real MDB consumes it asynchronously.
+                stockAlertProducer.fireLowStock(alert);
             }
         }
     }
@@ -147,8 +126,8 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
      */
     @Override
     public List<String> getLowStockAlerts() {
-        StockAlertBean.DAO alertDao = new StockAlertBean.DAO();
-        List<String> lowIds = alertDao.findLowStockProductIds(storeId, lowStockThreshold);
+        // Was: new StockAlertBean.DAO().findLowStockProductIds(...)
+        List<String> lowIds = repository.findLowStockProductIds(storeId, lowStockThreshold);
         List<String> messages = new ArrayList<>();
         for (String productId : lowIds) {
             messages.add("LOW STOCK: " + productId + " at " + storeId);
@@ -156,14 +135,11 @@ public class StoreInventoryBean implements IStoreInventory, Serializable {
         return messages;
     }
 
+    // ── session end method ───────────────────────────────────────
 
-    // ── @Remove — session end method ─────────────────────────────
-
-    // @Remove
     /** Clears all session state. Call when this store's session is no longer needed. */
     public void closeStore() {
         storeId = null;
         storeName = null;
-        stockAlertMDB = null;
     }
 }

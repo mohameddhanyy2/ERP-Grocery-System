@@ -4,15 +4,18 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Masri brand red (sampled from the logo wordmark ~ #C8102E)
         brand: {
-          50:  '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
+          50:  '#fef2f3',
+          100: '#fde2e4',
+          200: '#fbccd0',
+          300: '#f7a3aa',
+          400: '#f06b76',
+          500: '#e23744',
+          600: '#c8102e',
+          700: '#a60d26',
+          800: '#891025',
+          900: '#741224',
         },
       },
       fontFamily: {
